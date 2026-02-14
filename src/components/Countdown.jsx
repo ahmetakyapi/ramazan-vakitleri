@@ -15,8 +15,8 @@ const Countdown = ({ times, showAllTimes }) => {
         // Tüm Vakitler: Sıradaki herhangi bir vakti göster
         next = getNextPrayer(times);
       } else {
-        // Sahur & İftar: Sadece bu ikisi arasında geçiş yap
-        next = getNextSahurOrIftar(times);
+        // İmsak & İftar: Sadece bu ikisi arasında geçiş yap
+        next = getNextImsakOrIftar(times);
       }
 
       setNextPrayer(next);
@@ -33,46 +33,46 @@ const Countdown = ({ times, showAllTimes }) => {
     return () => clearInterval(interval);
   }, [times, showAllTimes]);
 
-  // Sahur veya İftar'a kalan süreyi hesapla
-  const getNextSahurOrIftar = (times) => {
+  // İmsak veya İftar'a kalan süreyi hesapla
+  const getNextImsakOrIftar = (times) => {
     const now = new Date();
 
-    // Sahur (Fajr) ve İftar (Maghrib) vakitlerini al
-    const sahurTime = parseTimeToDate(times.Fajr);
+    // İmsak (Fajr) ve İftar (Maghrib) vakitlerini al
+    const imsakTime = parseTimeToDate(times.Fajr);
     const iftarTime = parseTimeToDate(times.Maghrib);
 
     // Şuanki zamana göre sıradaki vakti belirle
-    if (now < sahurTime) {
-      // Sahur henüz olmadı
+    if (now < imsakTime) {
+      // İmsak henüz olmadı
       return {
         key: 'Fajr',
-        name: 'Sahur',
+        name: 'İmsak',
         time: times.Fajr,
-        date: sahurTime,
+        date: imsakTime,
         isIftar: false,
-        isSahur: true
+        isImsak: true
       };
     } else if (now < iftarTime) {
-      // Sahur geçti, İftar'a kadar bekle
+      // İmsak geçti, İftar'a kadar bekle
       return {
         key: 'Maghrib',
         name: 'İftar',
         time: times.Maghrib,
         date: iftarTime,
         isIftar: true,
-        isSahur: false
+        isImsak: false
       };
     } else {
-      // İftar da geçti, yarının Sahur'una kadar bekle
-      const tomorrowSahur = parseTimeToDate(times.Fajr);
-      tomorrowSahur.setDate(tomorrowSahur.getDate() + 1);
+      // İftar da geçti, yarının İmsak'ına kadar bekle
+      const tomorrowImsak = parseTimeToDate(times.Fajr);
+      tomorrowImsak.setDate(tomorrowImsak.getDate() + 1);
       return {
         key: 'Fajr',
-        name: 'Sahur',
+        name: 'İmsak',
         time: times.Fajr,
-        date: tomorrowSahur,
+        date: tomorrowImsak,
         isIftar: false,
-        isSahur: true,
+        isImsak: true,
         isTomorrow: true
       };
     }
@@ -100,11 +100,11 @@ const Countdown = ({ times, showAllTimes }) => {
       const displayName = nameMap[nextPrayer.key] || nextPrayer.name;
       return `${displayName} Vaktine`;
     } else {
-      // Sahur & İftar modunda
+      // İmsak & İftar modunda
       if (nextPrayer.isIftar) {
         return 'İftar Vaktine';
       }
-      return 'Sahur Vaktine';
+      return 'İmsak Vaktine';
     }
   };
 

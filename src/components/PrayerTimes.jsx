@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { getNextPrayer } from '../utils/timeUtils';
 
 const prayerNamesSimple = {
-  Fajr: 'Sahur',
+  Fajr: 'İmsak',
   Maghrib: 'İftar'
 };
 

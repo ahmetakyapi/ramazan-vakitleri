@@ -113,7 +113,7 @@ function App() {
                 className={`toggle-btn ${!showAllTimes ? 'active' : ''}`}
                 onClick={() => !showAllTimes || toggleViewMode()}
               >
-                Sahur & İftar
+                İmsak & İftar
               </button>
               <button
                 className={`toggle-btn ${showAllTimes ? 'active' : ''}`}
@@ -126,6 +126,11 @@ function App() {
           </>
         )}
       </main>
+      <footer className="api-credit">
+        <a href="https://aladhan.com" target="_blank" rel="noopener noreferrer">
+          Veriler: Aladhan API
+        </a>
+      </footer>
     </div>
   );
 }
