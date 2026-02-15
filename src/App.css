@@ -166,7 +166,7 @@ body {
   transform: translate(-50%, -50%);
   width: calc(100% - 40px);
   max-width: 320px;
-  max-height: 70vh;
+  max-height: 45vh;
   background: rgba(26, 26, 46, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--border-radius);
@@ -180,12 +180,12 @@ body {
 
 .city-search {
   width: 100%;
-  padding: 16px 20px;
+  padding: 14px 20px;
   background: rgba(255, 255, 255, 0.05);
   border: none;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   color: var(--text-primary);
-  font-size: 1rem;
+  font-size: 0.95rem;
   outline: none;
 }
 
@@ -214,10 +214,11 @@ body {
 }
 
 .city-item {
-  padding: 14px 20px;
+  padding: 10px 20px;
   cursor: pointer;
   transition: var(--transition);
   color: var(--text-secondary);
+  font-size: 0.875rem;
 }
 
 .city-item:hover {
@@ -497,9 +498,7 @@ body {
   }
 
   .city-dropdown {
-    min-width: 240px;
-    left: 50%;
-    transform: translateX(-50%);
+    width: calc(100% - 24px);
   }
 
   .countdown {
