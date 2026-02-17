@@ -60,12 +60,10 @@ body {
 .app {
   max-width: 430px;
   margin: 0 auto;
-  padding: 32px 24px 48px;
-  height: 100vh;
-  height: 100dvh;
+  padding: 32px 24px 40px;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
 }
 
 /* Header */
@@ -73,8 +71,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 16px;
+  gap: 16px;
+  margin-bottom: 40px;
 }
 
 /* Current Time */
@@ -263,8 +261,6 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  min-height: 0;
 }
 
 /* Loading & Error States */
@@ -312,7 +308,7 @@ body {
 /* Countdown */
 .countdown {
   text-align: center;
-  padding: 16px 0 32px;
+  padding: 20px 0 60px;
 }
 
 .countdown-label {
@@ -580,7 +576,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 24px;
+  padding: 12px 20px;
   padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
   font-size: 0.7rem;
   background: linear-gradient(to top, rgba(26, 26, 46, 0.98) 0%, rgba(26, 26, 46, 0.85) 60%, transparent 100%);
@@ -623,12 +619,12 @@ body {
 /* Responsive - Extra Small (< 360px) */
 @media (max-width: 359px) {
   .app {
-    padding: 24px 24px 48px;
+    padding: 40px 24px 30px;
   }
 
   .header {
-    gap: 10px;
-    margin-bottom: 16px;
+    gap: 12px;
+    margin-bottom: 24px;
   }
 
   .current-time {
@@ -649,12 +645,12 @@ body {
   }
 
   .countdown {
-    padding: 12px 0 20px;
+    padding: 16px 0 40px;
   }
 
   .countdown-label {
     font-size: 0.95rem;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
   }
 
   .countdown-time {
@@ -695,12 +691,12 @@ body {
 /* Responsive - Small (360px - 479px) */
 @media (min-width: 360px) and (max-width: 479px) {
   .app {
-    padding: 28px 28px 48px;
+    padding: 50px 28px 35px;
   }
 
   .header {
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: 14px;
+    margin-bottom: 30px;
   }
 
   .current-time {
@@ -712,7 +708,7 @@ body {
   }
 
   .countdown {
-    padding: 12px 0 24px;
+    padding: 16px 0 50px;
   }
 
   .countdown-time {
@@ -747,7 +743,7 @@ body {
 /* Responsive - Medium (480px - 767px) */
 @media (min-width: 480px) and (max-width: 767px) {
   .app {
-    padding: 32px 28px 48px;
+    padding: 40px 28px 50px;
   }
 
   .current-time {
