@@ -61,9 +61,11 @@ body {
   max-width: 430px;
   margin: 0 auto;
   padding: 32px 24px 40px;
-  min-height: 100vh;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 /* Header */
@@ -576,7 +578,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 12px 20px;
+  padding: 12px 28px;
   padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
   font-size: 0.7rem;
   background: linear-gradient(to top, rgba(26, 26, 46, 0.98) 0%, rgba(26, 26, 46, 0.85) 60%, transparent 100%);
