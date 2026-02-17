@@ -82,6 +82,7 @@ function App() {
   return (
     <div className="app">
       <header className="header">
+        <h1 className="sr-only">Ramazan Vakitleri - İftar ve Sahur Saatleri</h1>
         <CitySelector
           selectedCity={selectedCity}
           onCityChange={handleCityChange}
@@ -126,7 +127,7 @@ function App() {
           </>
         )}
       </main>
-      <footer className="app-footer">
+      <footer className="app-footer" aria-label="Site bilgileri">
         <a href="https://aladhan.com" target="_blank" rel="noopener noreferrer" className="footer-link">
           Veriler: Aladhan API
         </a>

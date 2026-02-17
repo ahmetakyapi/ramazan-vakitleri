@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ramazan-vakitleri.vercel.app/sitemap.xml

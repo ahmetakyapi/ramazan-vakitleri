@@ -1,11 +1,14 @@
 {
-  "name": "Ramazan Vakitleri",
+  "name": "Ramazan Vakitleri - İftar ve Sahur Saatleri",
   "short_name": "Ramazan",
-  "description": "Ramazan namaz vakitleri ve iftar/sahur saatleri",
+  "description": "Türkiye'nin 81 ili için güncel Ramazan iftar ve sahur vakitleri. Anlık geri sayım ile namaz saatlerini takip edin.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a1628",
   "theme_color": "#1e3a5f",
+  "lang": "tr",
+  "orientation": "portrait",
+  "categories": ["lifestyle", "utilities"],
   "icons": [
     {
       "src": "/favicons/android-chrome-192x192.png",
