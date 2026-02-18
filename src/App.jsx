@@ -144,7 +144,7 @@ function App() {
       </main>
       <footer className="app-footer" aria-label="Site bilgileri">
         <a href="https://ezanvakti.emushaf.net" target="_blank" rel="noopener noreferrer" className="footer-link">
-          Veriler: Diyanet İşleri Başkanlığı
+          Veriler: Diyanet
         </a>
         <a href="https://github.com/ahmetakyapi" target="_blank" rel="noopener noreferrer" className="footer-link github-link">
           <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">

@@ -48,6 +48,15 @@ export const useDistricts = (cityId) => {
         const res = await fetch(`${API_BASE}/ilceler/${cityId}`);
         if (!res.ok) throw new Error('İlçeler yüklenemedi');
         const data = await res.json();
+
+        // İstanbul için API'de olmayan Ümraniye'yi Çekmeköy verisiyle ekle
+        if (cityId === '539') {
+          const cekmekoey = data.find(d => d.IlceAdi === 'ÇEKMEKÖY');
+          if (cekmekoey && !data.find(d => d.IlceAdi === 'ÜMRANİYE')) {
+            data.push({ ...cekmekoey, IlceID: cekmekoey.IlceID, IlceAdi: 'ÜMRANİYE', IlceAdiEn: 'UMRANIYE', _virtual: true });
+          }
+        }
+
         setDistricts(data);
       } catch {
         setDistricts([]);
