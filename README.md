@@ -1,6 +1,6 @@
 # Ramazan Vakitleri
 
-> Türkiye illeri için iftar ve sahur vakitlerini gösteren minimal bir web uygulaması.
+> Türkiye il ve ilçeleri için iftar ve sahur vakitlerini gösteren minimal bir web uygulaması.
 
 <br>
 
@@ -15,10 +15,10 @@
 
 | Özellik | Açıklama |
 |---------|----------|
-| Namaz Vakitleri | Türkiye'nin 81 ili için güncel vakitler |
+| Namaz Vakitleri | Türkiye'nin tüm il ve ilçeleri için resmi vakitler |
 | Geri Sayım | İftar ve sahur için canlı geri sayım |
 | Görünüm Seçimi | İmsak & İftar veya tüm vakitler |
-| Şehir Hafızası | Seçilen şehir otomatik kaydedilir |
+| Konum Hafızası | Seçilen il/ilçe otomatik kaydedilir |
 | Ramazan Takibi | Kaçıncı gün olduğunu gösterir |
 | Kadir Gecesi | Özel gece bildirimi |
 | Responsive | Tüm cihazlarda uyumlu tasarım |
@@ -42,8 +42,8 @@ npm run build
 
 ## Teknolojiler
 
-```
-React        →  Kullanıcı arayüzü
-Vite         →  Build aracı
-Aladhan API  →  Namaz vakitleri verisi
+```text
+React                        →  Kullanıcı arayüzü
+Vite                         →  Build aracı
+ezanvakti.emushaf.net API    →  Diyanet İşleri Başkanlığı namaz vakitleri
 ```
