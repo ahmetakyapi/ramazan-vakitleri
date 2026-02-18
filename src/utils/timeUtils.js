@@ -34,20 +34,20 @@ export const getTimeDifference = (targetDate, currentDate) => {
 
 /**
  * Siradaki namaz vaktini bulur
- * @param {Object} times - Namaz vakitleri objesi
- * @returns {Object} { name, time, isIftar }
+ * @param {Object} times - Namaz vakitleri objesi (ezanvakti API formatı)
+ * @returns {Object} { key, name, time, date, isIftar, isSahur }
  */
 export const getNextPrayer = (times) => {
   if (!times) return null;
 
   const now = new Date();
   const prayerOrder = [
-    { key: 'Fajr', name: 'Sahur', isIftar: false, isSahur: true },
-    { key: 'Sunrise', name: 'Güneş', isIftar: false, isSahur: false },
-    { key: 'Dhuhr', name: 'Öğle', isIftar: false, isSahur: false },
-    { key: 'Asr', name: 'İkindi', isIftar: false, isSahur: false },
-    { key: 'Maghrib', name: 'İftar', isIftar: true, isSahur: false },
-    { key: 'Isha', name: 'Yatsı', isIftar: false, isSahur: false }
+    { key: 'Imsak', name: 'İmsak', isIftar: false, isSahur: true },
+    { key: 'Gunes', name: 'Güneş', isIftar: false, isSahur: false },
+    { key: 'Ogle', name: 'Öğle', isIftar: false, isSahur: false },
+    { key: 'Ikindi', name: 'İkindi', isIftar: false, isSahur: false },
+    { key: 'Aksam', name: 'Akşam', isIftar: true, isSahur: false },
+    { key: 'Yatsi', name: 'Yatsı', isIftar: false, isSahur: false }
   ];
 
   for (const prayer of prayerOrder) {
@@ -64,15 +64,15 @@ export const getNextPrayer = (times) => {
     }
   }
 
-  // Tüm vakitler geçmişse, yarın sahur vakti
-  const tomorrowFajr = parseTimeToDate(times.Fajr);
-  tomorrowFajr.setDate(tomorrowFajr.getDate() + 1);
+  // Tüm vakitler geçmişse, yarın imsak vakti
+  const tomorrowImsak = parseTimeToDate(times.Imsak);
+  tomorrowImsak.setDate(tomorrowImsak.getDate() + 1);
 
   return {
-    key: 'Fajr',
-    name: 'Sahur',
-    time: times.Fajr,
-    date: tomorrowFajr,
+    key: 'Imsak',
+    name: 'İmsak',
+    time: times.Imsak,
+    date: tomorrowImsak,
     isIftar: false,
     isSahur: true,
     isTomorrow: true

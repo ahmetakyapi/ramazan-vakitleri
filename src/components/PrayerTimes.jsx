@@ -3,12 +3,12 @@ import { getNextPrayer } from '../utils/timeUtils';
 
 // Ramazan tarihleri (Diyanet İşleri Başkanlığı verileri)
 const RAMAZAN_DATES = {
-  2025: { start: new Date(2025, 2, 1),  end: new Date(2025, 2, 29) }, // 1 Mart - 29 Mart (29 gün)
-  2026: { start: new Date(2026, 1, 19), end: new Date(2026, 2, 19) }, // 19 Şubat - 19 Mart (29 gün)
-  2027: { start: new Date(2027, 1, 8),  end: new Date(2027, 2, 8) },  // 8 Şubat - 8 Mart (29 gün)
-  2028: { start: new Date(2028, 0, 28), end: new Date(2028, 1, 25) }, // 28 Ocak - 25 Şubat
-  2029: { start: new Date(2029, 0, 16), end: new Date(2029, 1, 13) }, // 16 Ocak - 13 Şubat
-  2030: { start: new Date(2030, 0, 6),  end: new Date(2030, 1, 3) },  // 6 Ocak - 3 Şubat
+  2025: { start: new Date(2025, 2, 1),  end: new Date(2025, 2, 29) },
+  2026: { start: new Date(2026, 1, 19), end: new Date(2026, 2, 19) },
+  2027: { start: new Date(2027, 1, 8),  end: new Date(2027, 2, 8) },
+  2028: { start: new Date(2028, 0, 28), end: new Date(2028, 1, 25) },
+  2029: { start: new Date(2029, 0, 16), end: new Date(2029, 1, 13) },
+  2030: { start: new Date(2030, 0, 6),  end: new Date(2030, 1, 3) },
 };
 
 const getRamazanInfo = () => {
@@ -17,15 +17,12 @@ const getRamazanInfo = () => {
 
   const year = today.getFullYear();
 
-  // Bu yılın Ramazan'ını kontrol et
   let ramazan = RAMAZAN_DATES[year];
 
-  // Eğer bu yılın Ramazan'ı geçtiyse, gelecek yıla bak
   if (ramazan && today > ramazan.end) {
     ramazan = RAMAZAN_DATES[year + 1];
   }
 
-  // Eğer bu yılın Ramazan'ı henüz başlamadıysa veya gelecek yılınkine bakıyorsak
   if (!ramazan) return null;
 
   if (today < ramazan.start) {
@@ -45,21 +42,21 @@ const getRamazanInfo = () => {
 };
 
 const prayerNamesSimple = {
-  Fajr: 'İmsak',
-  Maghrib: 'İftar'
+  Imsak: 'İmsak',
+  Aksam: 'İftar'
 };
 
 const prayerNamesAll = {
-  Fajr: 'İmsak',
-  Sunrise: 'Güneş',
-  Dhuhr: 'Öğle',
-  Asr: 'İkindi',
-  Maghrib: 'Akşam',
-  Isha: 'Yatsı'
+  Imsak: 'İmsak',
+  Gunes: 'Güneş',
+  Ogle: 'Öğle',
+  Ikindi: 'İkindi',
+  Aksam: 'Akşam',
+  Yatsi: 'Yatsı'
 };
 
-const allPrayers = ['Fajr', 'Sunrise', 'Dhuhr', 'Asr', 'Maghrib', 'Isha'];
-const mainPrayers = ['Fajr', 'Maghrib'];
+const allPrayers = ['Imsak', 'Gunes', 'Ogle', 'Ikindi', 'Aksam', 'Yatsi'];
+const mainPrayers = ['Imsak', 'Aksam'];
 
 const PrayerTimes = ({ times, showAllTimes }) => {
   const [nextPrayerKey, setNextPrayerKey] = useState(null);

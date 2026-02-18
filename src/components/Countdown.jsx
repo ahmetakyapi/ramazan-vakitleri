@@ -12,10 +12,8 @@ const Countdown = ({ times, showAllTimes }) => {
       let next;
 
       if (showAllTimes) {
-        // Tüm Vakitler: Sıradaki herhangi bir vakti göster
         next = getNextPrayer(times);
       } else {
-        // İmsak & İftar: Sadece bu ikisi arasında geçiş yap
         next = getNextImsakOrIftar(times);
       }
 
@@ -33,43 +31,37 @@ const Countdown = ({ times, showAllTimes }) => {
     return () => clearInterval(interval);
   }, [times, showAllTimes]);
 
-  // İmsak veya İftar'a kalan süreyi hesapla
   const getNextImsakOrIftar = (times) => {
     const now = new Date();
 
-    // İmsak (Fajr) ve İftar (Maghrib) vakitlerini al
-    const imsakTime = parseTimeToDate(times.Fajr);
-    const iftarTime = parseTimeToDate(times.Maghrib);
+    const imsakTime = parseTimeToDate(times.Imsak);
+    const iftarTime = parseTimeToDate(times.Aksam);
 
-    // Şuanki zamana göre sıradaki vakti belirle
     if (now < imsakTime) {
-      // İmsak henüz olmadı
       return {
-        key: 'Fajr',
+        key: 'Imsak',
         name: 'İmsak',
-        time: times.Fajr,
+        time: times.Imsak,
         date: imsakTime,
         isIftar: false,
         isImsak: true
       };
     } else if (now < iftarTime) {
-      // İmsak geçti, İftar'a kadar bekle
       return {
-        key: 'Maghrib',
+        key: 'Aksam',
         name: 'İftar',
-        time: times.Maghrib,
+        time: times.Aksam,
         date: iftarTime,
         isIftar: true,
         isImsak: false
       };
     } else {
-      // İftar da geçti, yarının İmsak'ına kadar bekle
-      const tomorrowImsak = parseTimeToDate(times.Fajr);
+      const tomorrowImsak = parseTimeToDate(times.Imsak);
       tomorrowImsak.setDate(tomorrowImsak.getDate() + 1);
       return {
-        key: 'Fajr',
+        key: 'Imsak',
         name: 'İmsak',
-        time: times.Fajr,
+        time: times.Imsak,
         date: tomorrowImsak,
         isIftar: false,
         isImsak: true,
@@ -88,19 +80,17 @@ const Countdown = ({ times, showAllTimes }) => {
 
   const getTitle = () => {
     if (showAllTimes) {
-      // Tüm vakitler modunda geleneksel isimler
       const nameMap = {
-        'Fajr': 'İmsak',
-        'Sunrise': 'Güneş',
-        'Dhuhr': 'Öğle',
-        'Asr': 'İkindi',
-        'Maghrib': 'Akşam',
-        'Isha': 'Yatsı'
+        'Imsak': 'İmsak',
+        'Gunes': 'Güneş',
+        'Ogle': 'Öğle',
+        'Ikindi': 'İkindi',
+        'Aksam': 'Akşam',
+        'Yatsi': 'Yatsı'
       };
       const displayName = nameMap[nextPrayer.key] || nextPrayer.name;
       return `${displayName} Vaktine`;
     } else {
-      // İmsak & İftar modunda
       if (nextPrayer.isIftar) {
         return 'İftar Vaktine';
       }

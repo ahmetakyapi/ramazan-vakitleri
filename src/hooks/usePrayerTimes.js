@@ -1,42 +1,101 @@
 import { useState, useEffect } from 'react';
 
+const API_BASE = 'https://ezanvakti.emushaf.net';
+const TURKEY_CODE = '2';
+
 /**
- * Aladhan API'den namaz vakitlerini ceken hook
- * @param {number} lat - Enlem
- * @param {number} lng - Boylam
- * @param {Date} date - Tarih (opsiyonel)
+ * Türkiye şehirlerini çeken hook
  */
-const usePrayerTimes = (lat, lng, date = new Date()) => {
+export const useCities = () => {
+  const [cities, setCities] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/sehirler/${TURKEY_CODE}`);
+        if (!res.ok) throw new Error('Şehirler yüklenemedi');
+        const data = await res.json();
+        setCities(data);
+      } catch {
+        setCities([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCities();
+  }, []);
+
+  return { cities, loading };
+};
+
+/**
+ * Seçilen şehrin ilçelerini çeken hook
+ */
+export const useDistricts = (cityId) => {
+  const [districts, setDistricts] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!cityId) {
+      setDistricts([]);
+      return;
+    }
+
+    const fetchDistricts = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/ilceler/${cityId}`);
+        if (!res.ok) throw new Error('İlçeler yüklenemedi');
+        const data = await res.json();
+        setDistricts(data);
+      } catch {
+        setDistricts([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchDistricts();
+  }, [cityId]);
+
+  return { districts, loading };
+};
+
+/**
+ * Seçilen ilçenin namaz vakitlerini çeken hook
+ */
+const usePrayerTimes = (districtId) => {
   const [times, setTimes] = useState(null);
+  const [allTimes, setAllTimes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const fetchTimes = async () => {
-      if (!lat || !lng) return;
+    if (!districtId) return;
 
+    const fetchTimes = async () => {
       setLoading(true);
       setError(null);
 
       try {
-        // Unix timestamp (saniye cinsinden)
-        const timestamp = Math.floor(date.getTime() / 1000);
+        const res = await fetch(`${API_BASE}/vakitler/${districtId}`);
+        if (!res.ok) throw new Error('Vakitler yüklenemedi');
+        const data = await res.json();
 
-        const url = `https://api.aladhan.com/v1/timings/${timestamp}?latitude=${lat}&longitude=${lng}&method=13`;
+        setAllTimes(data);
 
-        const response = await fetch(url);
+        // Bugünün vakitlerini bul
+        const today = new Date();
+        const todayStr = `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
 
-        if (!response.ok) {
-          throw new Error('API yanit vermedi');
+        const todayTimes = data.find(d => d.MiladiTarihKisa === todayStr);
+
+        if (todayTimes) {
+          setTimes(todayTimes);
+        } else if (data.length > 0) {
+          // Bugünün verisi yoksa en yakın tarihi bul
+          setTimes(data[0]);
         }
-
-        const data = await response.json();
-
-        if (data.code !== 200 || !data.data) {
-          throw new Error('Gecersiz API yaniti');
-        }
-
-        setTimes(data.data.timings);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -45,7 +104,24 @@ const usePrayerTimes = (lat, lng, date = new Date()) => {
     };
 
     fetchTimes();
-  }, [lat, lng, date.toDateString()]);
+  }, [districtId]);
+
+  // Gün değiştiğinde bugünün vakitlerini güncelle
+  useEffect(() => {
+    if (allTimes.length === 0) return;
+
+    const checkDate = () => {
+      const today = new Date();
+      const todayStr = `${today.getDate().toString().padStart(2, '0')}.${(today.getMonth() + 1).toString().padStart(2, '0')}.${today.getFullYear()}`;
+      const todayTimes = allTimes.find(d => d.MiladiTarihKisa === todayStr);
+      if (todayTimes) {
+        setTimes(todayTimes);
+      }
+    };
+
+    const interval = setInterval(checkDate, 60000);
+    return () => clearInterval(interval);
+  }, [allTimes]);
 
   return { times, loading, error };
 };

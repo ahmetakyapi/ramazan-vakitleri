@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { cities } from '../data/cities';
+import { useState, useEffect, useRef } from 'react';
+import { useCities, useDistricts } from '../hooks/usePrayerTimes';
 
 const SettingsIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -15,58 +15,155 @@ const SettingsIcon = () => (
   </svg>
 );
 
-const CitySelector = ({ selectedCity, onCityChange }) => {
+const formatName = (name) => {
+  if (!name) return '';
+  return name
+    .split(' ')
+    .map(word => word.charAt(0) + word.slice(1).toLocaleLowerCase('tr-TR'))
+    .join(' ');
+};
+
+const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrictChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [step, setStep] = useState('city'); // 'city' veya 'district'
+  const searchRef = useRef(null);
 
-  const filteredCities = cities.filter(city =>
-    city.name.toLowerCase().includes(search.toLowerCase())
+  const { cities, loading: citiesLoading } = useCities();
+  const { districts, loading: districtsLoading } = useDistricts(selectedCity?.SehirID);
+
+  useEffect(() => {
+    if (isOpen && searchRef.current) {
+      searchRef.current.focus();
+    }
+  }, [isOpen, step]);
+
+  const TOP_CITIES = ['İSTANBUL', 'ANKARA', 'İZMİR'];
+
+  const filteredCities = cities
+    .filter(city =>
+      city.SehirAdi.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) ||
+      city.SehirAdiEn.toLowerCase().includes(search.toLowerCase())
+    )
+    .sort((a, b) => {
+      const aTop = TOP_CITIES.indexOf(a.SehirAdi);
+      const bTop = TOP_CITIES.indexOf(b.SehirAdi);
+      if (aTop !== -1 && bTop !== -1) return aTop - bTop;
+      if (aTop !== -1) return -1;
+      if (bTop !== -1) return 1;
+      return 0;
+    });
+
+  const filteredDistricts = districts.filter(district =>
+    district.IlceAdi.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) ||
+    district.IlceAdiEn.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleSelect = (city) => {
+  const handleOpen = () => {
+    setIsOpen(true);
+    setSearch('');
+    setStep(selectedCity ? 'district' : 'city');
+  };
+
+  const handleCitySelect = (city) => {
     onCityChange(city);
+    setSearch('');
+    setStep('district');
+  };
+
+  const handleDistrictSelect = (district) => {
+    onDistrictChange(district);
     setIsOpen(false);
     setSearch('');
   };
+
+  const handleBack = () => {
+    setStep('city');
+    setSearch('');
+  };
+
+  const handleClose = () => {
+    setIsOpen(false);
+    setSearch('');
+  };
+
+  const displayName = selectedDistrict
+    ? `${formatName(selectedCity?.SehirAdi)} / ${formatName(selectedDistrict?.IlceAdi)}`
+    : selectedCity
+      ? formatName(selectedCity.SehirAdi)
+      : 'Konum Seç';
 
   return (
     <div className="city-selector">
       <button
         className="city-selector-button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={handleOpen}
       >
         <span className="city-icon">
           <SettingsIcon />
         </span>
-        <span className="city-name">{selectedCity?.name || 'Şehir Seç'}</span>
+        <span className="city-name">{displayName}</span>
       </button>
 
       {isOpen && (
         <div className="city-dropdown">
+          <div className="dropdown-header">
+            {step === 'district' && (
+              <button className="back-btn" onClick={handleBack}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                  <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+              </button>
+            )}
+            <span className="dropdown-title">
+              {step === 'city' ? 'Şehir Seçin' : formatName(selectedCity?.SehirAdi) + ' - İlçe Seçin'}
+            </span>
+          </div>
           <input
+            ref={searchRef}
             type="text"
             className="city-search"
-            placeholder="Şehir ara..."
+            placeholder={step === 'city' ? 'Şehir ara...' : 'İlçe ara...'}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            autoFocus
           />
           <ul className="city-list">
-            {filteredCities.map((city) => (
-              <li
-                key={city.name}
-                className={`city-item ${selectedCity?.name === city.name ? 'active' : ''}`}
-                onClick={() => handleSelect(city)}
-              >
-                {city.name}
-              </li>
-            ))}
+            {step === 'city' && (
+              citiesLoading ? (
+                <li className="city-item loading-item">Yükleniyor...</li>
+              ) : (
+                filteredCities.map((city) => (
+                  <li
+                    key={city.SehirID}
+                    className={`city-item ${selectedCity?.SehirID === city.SehirID ? 'active' : ''}`}
+                    onClick={() => handleCitySelect(city)}
+                  >
+                    {formatName(city.SehirAdi)}
+                  </li>
+                ))
+              )
+            )}
+            {step === 'district' && (
+              districtsLoading ? (
+                <li className="city-item loading-item">Yükleniyor...</li>
+              ) : (
+                filteredDistricts.map((district) => (
+                  <li
+                    key={district.IlceID}
+                    className={`city-item ${selectedDistrict?.IlceID === district.IlceID ? 'active' : ''}`}
+                    onClick={() => handleDistrictSelect(district)}
+                  >
+                    {formatName(district.IlceAdi)}
+                  </li>
+                ))
+              )
+            )}
           </ul>
         </div>
       )}
 
       {isOpen && (
-        <div className="city-overlay" onClick={() => setIsOpen(false)} />
+        <div className="city-overlay" onClick={handleClose} />
       )}
     </div>
   );

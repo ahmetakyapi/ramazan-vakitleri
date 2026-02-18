@@ -181,7 +181,7 @@ body {
   transform: translate(-50%, -50%);
   width: calc(100% - 40px);
   max-width: 320px;
-  max-height: 45vh;
+  max-height: 50vh;
   background: rgba(26, 26, 46, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--border-radius);
@@ -191,6 +191,48 @@ body {
   backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
+}
+
+.dropdown-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px 0;
+}
+
+.dropdown-title {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
+.back-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.loading-item {
+  color: var(--text-muted) !important;
+  cursor: default !important;
+  text-align: center;
+  padding: 20px !important;
 }
 
 .city-search {

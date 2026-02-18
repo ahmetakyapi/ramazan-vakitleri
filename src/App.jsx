@@ -3,19 +3,30 @@ import CitySelector from './components/CitySelector';
 import Countdown from './components/Countdown';
 import PrayerTimes from './components/PrayerTimes';
 import usePrayerTimes from './hooks/usePrayerTimes';
-import { cities } from './data/cities';
 
-const STORAGE_KEY = 'ramazan-vakitleri-city';
+const CITY_KEY = 'ramazan-vakitleri-city';
+const DISTRICT_KEY = 'ramazan-vakitleri-district';
 const VIEW_MODE_KEY = 'ramazan-vakitleri-view';
+
+// İstanbul default değerleri
+const DEFAULT_CITY = { SehirID: '539', SehirAdi: 'İSTANBUL', SehirAdiEn: 'ISTANBUL' };
+const DEFAULT_DISTRICT = { IlceID: '9541', IlceAdi: 'İSTANBUL', IlceAdiEn: 'ISTANBUL' };
 
 function App() {
   const [selectedCity, setSelectedCity] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(CITY_KEY);
     if (saved) {
-      const city = cities.find(c => c.name === saved);
-      if (city) return city;
+      try { return JSON.parse(saved); } catch { /* ignore */ }
     }
-    return cities.find(c => c.name === 'İstanbul');
+    return DEFAULT_CITY;
+  });
+
+  const [selectedDistrict, setSelectedDistrict] = useState(() => {
+    const saved = localStorage.getItem(DISTRICT_KEY);
+    if (saved) {
+      try { return JSON.parse(saved); } catch { /* ignore */ }
+    }
+    return DEFAULT_DISTRICT;
   });
 
   const [showAllTimes, setShowAllTimes] = useState(() => {
@@ -23,18 +34,20 @@ function App() {
     return saved === 'true';
   });
 
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [currentTime, setCurrentTime] = useState(new Date());
 
-  const { times, loading, error } = usePrayerTimes(
-    selectedCity?.lat,
-    selectedCity?.lng,
-    currentDate
-  );
+  const { times, loading, error } = usePrayerTimes(selectedDistrict?.IlceID);
 
   const handleCityChange = (city) => {
     setSelectedCity(city);
-    localStorage.setItem(STORAGE_KEY, city.name);
+    setSelectedDistrict(null);
+    localStorage.setItem(CITY_KEY, JSON.stringify(city));
+    localStorage.removeItem(DISTRICT_KEY);
+  };
+
+  const handleDistrictChange = (district) => {
+    setSelectedDistrict(district);
+    localStorage.setItem(DISTRICT_KEY, JSON.stringify(district));
   };
 
   const toggleViewMode = () => {
@@ -42,18 +55,6 @@ function App() {
     setShowAllTimes(newValue);
     localStorage.setItem(VIEW_MODE_KEY, String(newValue));
   };
-
-  useEffect(() => {
-    const checkDate = () => {
-      const now = new Date();
-      if (now.toDateString() !== currentDate.toDateString()) {
-        setCurrentDate(now);
-      }
-    };
-
-    const interval = setInterval(checkDate, 60000);
-    return () => clearInterval(interval);
-  }, [currentDate]);
 
   useEffect(() => {
     const updateTime = () => {
@@ -85,7 +86,9 @@ function App() {
         <h1 className="sr-only">Ramazan Vakitleri - İftar ve Sahur Saatleri</h1>
         <CitySelector
           selectedCity={selectedCity}
+          selectedDistrict={selectedDistrict}
           onCityChange={handleCityChange}
+          onDistrictChange={handleDistrictChange}
         />
         <div className="current-time">{formatCurrentTime()}</div>
       </header>
@@ -126,10 +129,22 @@ function App() {
             <PrayerTimes times={times} showAllTimes={showAllTimes} />
           </>
         )}
+
+        {!loading && !error && !times && selectedDistrict && (
+          <div className="error-state">
+            <p>Bugün için vakit bilgisi bulunamadı</p>
+          </div>
+        )}
+
+        {!selectedDistrict && (
+          <div className="error-state">
+            <p>Lütfen bir ilçe seçin</p>
+          </div>
+        )}
       </main>
       <footer className="app-footer" aria-label="Site bilgileri">
-        <a href="https://aladhan.com" target="_blank" rel="noopener noreferrer" className="footer-link">
-          Veriler: Aladhan API
+        <a href="https://ezanvakti.emushaf.net" target="_blank" rel="noopener noreferrer" className="footer-link">
+          Veriler: Diyanet İşleri Başkanlığı
         </a>
         <a href="https://github.com/ahmetakyapi" target="_blank" rel="noopener noreferrer" className="footer-link github-link">
           <svg viewBox="0 0 16 16" fill="currentColor" width="14" height="14">
