@@ -117,7 +117,9 @@ const Countdown = ({ times, showAllTimes }) => {
           <span className="time-number">{hours}</span>
           <span className="time-unit">sa </span>
           <span className="time-number">{minutes.toString().padStart(2, '0')}</span>
-          <span className="time-unit">dk</span>
+          <span className="time-unit">dk </span>
+          <span className="time-number time-seconds">{seconds.toString().padStart(2, '0')}</span>
+          <span className="time-unit time-seconds">sn</span>
         </>
       );
     }
@@ -127,8 +129,8 @@ const Countdown = ({ times, showAllTimes }) => {
         <>
           <span className="time-number">{minutes}</span>
           <span className="time-unit">dk </span>
-          <span className="time-number">{seconds.toString().padStart(2, '0')}</span>
-          <span className="time-unit">sn</span>
+          <span className="time-number time-seconds">{seconds.toString().padStart(2, '0')}</span>
+          <span className="time-unit time-seconds">sn</span>
         </>
       );
     }

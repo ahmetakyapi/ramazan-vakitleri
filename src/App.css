@@ -344,6 +344,18 @@ body {
   font-size: 3rem;
 }
 
+.countdown-time .time-number.time-seconds {
+  font-size: 0.5em !important;
+  opacity: 0.65;
+  vertical-align: baseline;
+}
+
+.countdown-time .time-unit.time-seconds {
+  font-size: 0.35em !important;
+  opacity: 0.65;
+  vertical-align: baseline;
+}
+
 .countdown-target {
   display: none;
 }
@@ -613,7 +625,6 @@ body {
 
 @media (min-width: 768px) {
   .app-footer {
-    padding: 16px 32px;
     font-size: 0.75rem;
   }
 }
@@ -767,52 +778,99 @@ body {
 
 /* Responsive - Large (768px+) */
 @media (min-width: 768px) {
-  .app {
-    padding: 32px 40px 40px;
+  body {
+    display: flex;
+    align-items: center;
     justify-content: center;
+    height: 100vh;
+    height: 100dvh;
+    overflow: hidden;
+  }
+
+  .app {
+    max-width: 620px;
+    height: auto;
+    overflow: visible;
+    padding: 48px 56px;
+    justify-content: flex-start;
   }
 
   .header {
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-
-  .current-time {
-    font-size: 2.75rem;
-  }
-
-  .current-time .time-seconds {
-    font-size: 1.35rem;
-  }
-
-  .countdown {
-    padding: 16px 0 32px;
-  }
-
-  .countdown-time {
-    font-size: 5rem;
-  }
-
-  .countdown-time .time-unit {
-    font-size: 3.25rem;
-  }
-
-  .toggle-btn {
-    padding: 10px 22px;
-    font-size: 0.875rem;
-  }
-
-  .view-toggle {
+    gap: 14px;
     margin-bottom: 20px;
   }
 
+  .current-time {
+    font-size: 3.5rem;
+  }
+
+  .current-time .time-seconds {
+    font-size: 1.7rem;
+  }
+
+  .countdown {
+    padding: 12px 0 24px;
+  }
+
+  .countdown-label {
+    font-size: 1.25rem;
+    margin-bottom: 12px;
+  }
+
+  .countdown-time {
+    font-size: 5.5rem;
+    white-space: nowrap;
+  }
+
+  .countdown-time .time-unit {
+    font-size: 3.5rem;
+  }
+
+  .toggle-btn {
+    padding: 12px 26px;
+    font-size: 0.95rem;
+  }
+
+  .view-toggle {
+    margin-bottom: 16px;
+  }
+
   .prayer-item {
-    padding: 16px 24px;
+    padding: 14px 28px;
   }
 
   .prayer-name,
   .prayer-time {
-    font-size: 1.125rem;
+    font-size: 1.25rem;
+  }
+
+  .ramazan-badge {
+    margin-top: 24px;
+    padding: 16px 24px;
+  }
+
+  .ramazan-highlight {
+    font-size: 2rem;
+  }
+
+  .ramazan-day {
+    font-size: 1.25rem;
+  }
+
+  .kadir-gecesi {
+    margin-top: 24px;
+    margin-bottom: 8px;
+    padding: 18px 28px;
+  }
+
+  .app-footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(to top, rgba(26, 26, 46, 0.98) 0%, rgba(26, 26, 46, 0.85) 60%, transparent 100%);
+    padding: 12px 32px;
+    font-size: 0.75rem;
   }
 }
 
@@ -829,13 +887,15 @@ body {
   }
 }
 
-/* Safe area for notch devices */
-@supports (padding-top: env(safe-area-inset-top)) {
-  .app {
-    padding-top: max(32px, env(safe-area-inset-top));
-    padding-bottom: max(40px, env(safe-area-inset-bottom));
-    padding-left: max(24px, env(safe-area-inset-left));
-    padding-right: max(24px, env(safe-area-inset-right));
+/* Safe area for notch devices (mobile only) */
+@media (max-width: 767px) {
+  @supports (padding-top: env(safe-area-inset-top)) {
+    .app {
+      padding-top: max(32px, env(safe-area-inset-top));
+      padding-bottom: max(40px, env(safe-area-inset-bottom));
+      padding-left: max(24px, env(safe-area-inset-left));
+      padding-right: max(24px, env(safe-area-inset-right));
+    }
   }
 }
 
