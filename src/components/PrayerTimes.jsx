@@ -131,7 +131,7 @@ const PrayerTimes = ({ times, showAllTimes }) => {
 
   return (
     <div className="prayer-times">
-      <ul className="prayer-list">
+      <ul className="prayer-list" key={showAllTimes ? 'all' : 'main'}>
         {prayerOrder.map((key) => (
           <li
             key={key}

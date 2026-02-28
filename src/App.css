@@ -305,6 +305,7 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
+  transition: all 0.3s ease;
 }
 
 /* Loading & Error States */
@@ -353,6 +354,7 @@ body {
 .countdown {
   text-align: center;
   padding: 20px 0 60px;
+  transition: all 0.3s ease;
 }
 
 .countdown-label {
@@ -360,6 +362,7 @@ body {
   color: var(--text-secondary);
   margin-bottom: 16px;
   font-weight: 400;
+  transition: all 0.3s ease;
 }
 
 .countdown-time {
@@ -465,7 +468,26 @@ body {
   border: 2px solid transparent;
   margin: 0;
   width: 100%;
+  animation: prayerItemIn 0.3s ease both;
 }
+
+@keyframes prayerItemIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.prayer-item:nth-child(1) { animation-delay: 0s; }
+.prayer-item:nth-child(2) { animation-delay: 0.04s; }
+.prayer-item:nth-child(3) { animation-delay: 0.08s; }
+.prayer-item:nth-child(4) { animation-delay: 0.12s; }
+.prayer-item:nth-child(5) { animation-delay: 0.16s; }
+.prayer-item:nth-child(6) { animation-delay: 0.2s; }
 
 .prayer-item.active {
   background: var(--active-bg);
@@ -521,6 +543,19 @@ body {
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 16px;
+  animation: badgeIn 0.35s ease both;
+  animation-delay: 0.1s;
+}
+
+@keyframes badgeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .ramazan-text {
@@ -913,6 +948,359 @@ body {
     background: linear-gradient(to top, rgba(26, 26, 46, 0.98) 0%, rgba(26, 26, 46, 0.85) 60%, transparent 100%);
     padding: 12px 32px;
     font-size: 0.75rem;
+  }
+}
+
+/* Responsive - Large Desktop (1024px+) */
+@media (min-width: 1024px) {
+  body {
+    background: linear-gradient(180deg, #0f0f1a 0%, #1a1a2e 30%, #16213e 50%, #1a1a2e 70%, #0f0f1a 100%);
+  }
+
+  #root {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    min-height: 100dvh;
+  }
+
+  .app {
+    max-width: 520px;
+    background: linear-gradient(180deg, rgba(30, 30, 60, 0.6) 0%, rgba(22, 33, 62, 0.5) 50%, rgba(30, 30, 60, 0.6) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 30px;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.03),
+      0 20px 80px rgba(0, 0, 0, 0.4),
+      0 0 120px rgba(167, 139, 250, 0.03);
+    backdrop-filter: blur(20px);
+    padding: 36px 44px 32px;
+    margin: 20px auto;
+    height: auto;
+    min-height: auto;
+    max-height: none;
+    overflow: visible;
+    transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .header {
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .current-time {
+    font-size: 3rem;
+  }
+
+  .current-time .time-seconds {
+    font-size: 1.5rem;
+  }
+
+  .countdown {
+    padding: 10px 0 20px;
+  }
+
+  .countdown-label {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+  }
+
+  .countdown-time {
+    font-size: 4.5rem;
+  }
+
+  .countdown-time .time-unit {
+    font-size: 2.75rem;
+  }
+
+  .view-toggle {
+    margin-bottom: 14px;
+  }
+
+  .toggle-btn {
+    padding: 9px 20px;
+    font-size: 0.875rem;
+  }
+
+  .prayer-item {
+    padding: 12px 24px;
+  }
+
+  .prayer-name,
+  .prayer-time {
+    font-size: 1.1rem;
+  }
+
+  .ramazan-badge {
+    margin-top: 20px;
+    padding: 14px 22px;
+  }
+
+  .ramazan-highlight {
+    font-size: 1.6rem;
+  }
+
+  .ramazan-day {
+    font-size: 1.05rem;
+  }
+
+  .kadir-gecesi {
+    margin-top: 20px;
+    margin-bottom: 8px;
+    padding: 16px 22px;
+  }
+
+  .app-footer {
+    position: relative;
+    background: none;
+    padding: 14px 0 0;
+    margin-top: 18px;
+    font-size: 0.7rem;
+  }
+}
+
+/* Responsive - XL Desktop (1440px+) */
+@media (min-width: 1440px) {
+  .app {
+    max-width: 560px;
+    padding: 42px 52px 36px;
+    border-radius: 32px;
+    margin: 24px auto;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.04),
+      0 30px 100px rgba(0, 0, 0, 0.5),
+      0 0 160px rgba(167, 139, 250, 0.04);
+  }
+
+  .current-time {
+    font-size: 3.25rem;
+  }
+
+  .current-time .time-seconds {
+    font-size: 1.6rem;
+  }
+
+  .countdown-time {
+    font-size: 5rem;
+  }
+
+  .countdown-time .time-unit {
+    font-size: 3.1rem;
+  }
+
+  .countdown-label {
+    font-size: 1.15rem;
+  }
+
+  .prayer-name,
+  .prayer-time {
+    font-size: 1.2rem;
+  }
+
+  .prayer-item {
+    padding: 14px 28px;
+  }
+
+  .toggle-btn {
+    padding: 10px 24px;
+    font-size: 0.925rem;
+  }
+}
+
+/* Responsive - Full HD (1920px+) */
+@media (min-width: 1920px) {
+  .app {
+    max-width: 600px;
+    padding: 48px 56px 40px;
+    border-radius: 36px;
+    margin: 32px auto;
+    box-shadow:
+      0 0 0 1px rgba(255, 255, 255, 0.05),
+      0 40px 120px rgba(0, 0, 0, 0.5),
+      0 0 200px rgba(167, 139, 250, 0.05);
+  }
+
+  .current-time {
+    font-size: 3.5rem;
+  }
+
+  .current-time .time-seconds {
+    font-size: 1.75rem;
+  }
+
+  .countdown-time {
+    font-size: 5.5rem;
+  }
+
+  .countdown-time .time-unit {
+    font-size: 3.4rem;
+  }
+
+  .countdown-label {
+    font-size: 1.25rem;
+    margin-bottom: 12px;
+  }
+
+  .prayer-name,
+  .prayer-time {
+    font-size: 1.3rem;
+  }
+
+  .prayer-item {
+    padding: 16px 32px;
+  }
+
+  .city-selector-button {
+    padding: 13px 22px;
+    font-size: 0.925rem;
+  }
+}
+
+/* Responsive - 4K / Ultra HD (3840px+) */
+@media (min-width: 3840px) {
+  .app {
+    max-width: 800px;
+    padding: 60px 72px 52px;
+    border-radius: 44px;
+    margin: 48px auto;
+    box-shadow:
+      0 0 0 2px rgba(255, 255, 255, 0.05),
+      0 60px 180px rgba(0, 0, 0, 0.5),
+      0 0 300px rgba(167, 139, 250, 0.06);
+    border-width: 2px;
+  }
+
+  .header {
+    gap: 18px;
+    margin-bottom: 24px;
+  }
+
+  .current-time {
+    font-size: 4.5rem;
+  }
+
+  .current-time .time-seconds {
+    font-size: 2.25rem;
+  }
+
+  .countdown {
+    padding: 16px 0 28px;
+  }
+
+  .countdown-label {
+    font-size: 1.75rem;
+    margin-bottom: 16px;
+  }
+
+  .countdown-time {
+    font-size: 7rem;
+  }
+
+  .countdown-time .time-unit {
+    font-size: 4.25rem;
+  }
+
+  .view-toggle {
+    margin-bottom: 20px;
+    padding: 5px;
+    border-radius: 60px;
+  }
+
+  .toggle-btn {
+    padding: 14px 32px;
+    font-size: 1.2rem;
+    border-radius: 60px;
+  }
+
+  .prayer-item {
+    padding: 20px 42px;
+    border-radius: 22px;
+  }
+
+  .prayer-item.active {
+    border-radius: 22px;
+    border-width: 2px;
+  }
+
+  .prayer-name,
+  .prayer-time {
+    font-size: 1.6rem;
+  }
+
+  .city-selector-button {
+    padding: 16px 28px;
+    font-size: 1.05rem;
+    border-radius: 32px;
+    gap: 12px;
+  }
+
+  .city-icon svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  .city-dropdown {
+    max-width: 440px;
+    border-radius: 26px;
+  }
+
+  .city-search {
+    padding: 18px 26px;
+    font-size: 1.15rem;
+  }
+
+  .city-item {
+    padding: 15px 26px;
+    font-size: 1.05rem;
+  }
+
+  .ramazan-badge {
+    padding: 20px 32px;
+    border-radius: 22px;
+    margin-top: 28px;
+  }
+
+  .ramazan-highlight {
+    font-size: 2.25rem;
+  }
+
+  .ramazan-day {
+    font-size: 1.4rem;
+  }
+
+  .ramazan-remaining {
+    font-size: 0.95rem;
+  }
+
+  .kadir-gecesi {
+    padding: 22px 32px;
+    border-radius: 24px;
+    gap: 16px;
+  }
+
+  .kadir-gecesi-icon {
+    font-size: 2rem;
+  }
+
+  .kadir-gecesi-title {
+    font-size: 1.35rem;
+  }
+
+  .kadir-gecesi-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .app-footer {
+    padding: 18px 0 0;
+    margin-top: 24px;
+    font-size: 0.9rem;
+  }
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border-width: 3px;
   }
 }
 
