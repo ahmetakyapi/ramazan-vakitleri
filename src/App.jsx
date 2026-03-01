@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import CitySelector from './components/CitySelector';
 import Countdown from './components/Countdown';
 import PrayerTimes from './components/PrayerTimes';
@@ -153,6 +154,7 @@ function App() {
           ahmetakyapi
         </a>
       </footer>
+      <Analytics />
     </div>
   );
 }
