@@ -6,7 +6,8 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/React-18.2-61DAFB?style=flat-square&logo=react&logoColor=white" alt="React">
-  <img src="https://img.shields.io/badge/Vite-5.0-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/Vite-7.3-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite">
+  <img src="https://img.shields.io/badge/Node-20.19%2B-339933?style=flat-square&logo=node.js&logoColor=white" alt="Node.js">
 </p>
 
 <br>
@@ -26,6 +27,8 @@
 <br>
 
 ## Kurulum
+
+`Node.js 20.19+` veya `22.12+` gereklidir.
 
 ```bash
 # Bağımlılıkları yükle

@@ -128,9 +128,11 @@ body {
 /* City Selector */
 .city-selector {
   position: relative;
+  width: 100%;
 }
 
 .city-selector-button {
+  width: 100%;
   padding: 12px 20px;
   background: var(--button-bg);
   border: none;
@@ -142,6 +144,7 @@ body {
   cursor: pointer;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   transition: var(--transition);
   text-transform: uppercase;
@@ -176,36 +179,67 @@ body {
 
 .city-dropdown {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: calc(100% - 40px);
-  max-width: 320px;
-  max-height: 50vh;
+  top: max(10px, env(safe-area-inset-top, 10px));
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  max-width: none;
+  max-height: 100dvh;
   background: rgba(26, 26, 46, 0.98);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: var(--border-radius);
+  border-radius: 28px 28px 0 0;
   overflow: hidden;
   z-index: 100;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+
+.city-sheet-handle {
+  width: 52px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  margin: 10px auto 4px;
 }
 
 .dropdown-header {
   display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 20px 0;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px 10px;
+}
+
+.dropdown-header-main {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+}
+
+.dropdown-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
 }
 
 .dropdown-title {
+  font-size: 0.95rem;
+  color: var(--text-primary);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.dropdown-subtitle {
   font-size: 0.8rem;
   color: var(--text-muted);
-  font-weight: 500;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
 }
 
 .back-btn {
@@ -223,7 +257,27 @@ body {
   flex-shrink: 0;
 }
 
+.close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+
 .back-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+}
+
+.close-btn:hover {
   background: rgba(255, 255, 255, 0.15);
   color: var(--text-primary);
 }
@@ -232,15 +286,26 @@ body {
   color: var(--text-muted) !important;
   cursor: default !important;
   text-align: center;
-  padding: 20px !important;
+  padding: 24px 20px !important;
+}
+
+.empty-item {
+  color: var(--text-muted) !important;
+  cursor: default !important;
+  text-align: center;
+  padding: 24px 20px !important;
+}
+
+.dropdown-search-wrap {
+  padding: 0 18px 12px;
 }
 
 .city-search {
   width: 100%;
-  padding: 14px 20px;
+  padding: 15px 18px;
   background: rgba(255, 255, 255, 0.05);
-  border: none;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
   color: var(--text-primary);
   font-size: 16px;
   outline: none;
@@ -250,11 +315,36 @@ body {
   color: var(--text-muted);
 }
 
+.selector-note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 18px 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.18);
+  color: rgba(219, 234, 254, 0.92);
+}
+
+.selector-note strong {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.selector-note span {
+  font-size: 0.8rem;
+  color: rgba(219, 234, 254, 0.78);
+}
+
 .city-list {
   list-style: none;
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 10px max(18px, env(safe-area-inset-bottom, 18px));
 }
 
 .city-list::-webkit-scrollbar {
@@ -271,11 +361,17 @@ body {
 }
 
 .city-item {
-  padding: 10px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
   cursor: pointer;
   transition: var(--transition);
   color: var(--text-secondary);
-  font-size: 0.875rem;
+  font-size: 0.95rem;
+  border-radius: 16px;
+  margin-bottom: 6px;
 }
 
 .city-item:hover {
@@ -287,6 +383,26 @@ body {
   background: rgba(167, 139, 250, 0.15);
   color: var(--accent);
   font-weight: 500;
+}
+
+.city-item-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.city-item-label {
+  color: inherit;
+}
+
+.city-item-meta {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.city-item.active .city-item-meta {
+  color: rgba(198, 181, 255, 0.88);
 }
 
 .city-overlay {
@@ -731,7 +847,15 @@ body {
   }
 
   .city-dropdown {
-    width: calc(100% - 24px);
+    inset: max(8px, env(safe-area-inset-top, 8px)) 0 0;
+  }
+
+  .dropdown-title {
+    font-size: 0.85rem;
+  }
+
+  .dropdown-subtitle {
+    font-size: 0.76rem;
   }
 
   .countdown {
@@ -855,6 +979,44 @@ body {
 
 /* Responsive - Large (768px+) */
 @media (min-width: 768px) {
+  .city-selector {
+    width: auto;
+  }
+
+  .city-selector-button {
+    width: auto;
+  }
+
+  .city-dropdown {
+    inset: auto;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(420px, calc(100% - 40px));
+    max-height: min(70vh, 720px);
+    border-radius: 28px;
+  }
+
+  .city-sheet-handle {
+    display: none;
+  }
+
+  .dropdown-header {
+    padding: 18px 20px 10px;
+  }
+
+  .dropdown-search-wrap {
+    padding: 0 20px 12px;
+  }
+
+  .selector-note {
+    margin: 0 20px 12px;
+  }
+
+  .city-list {
+    padding: 0 12px 14px;
+  }
+
   body {
     display: flex;
     align-items: center;

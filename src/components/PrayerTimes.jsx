@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
-import { getNextPrayer } from '../utils/timeUtils';
+import { getNextMainPrayer, getNextPrayer } from '../utils/timeUtils';
 
-// Ramazan tarihleri (Diyanet İşleri Başkanlığı verileri)
-const RAMAZAN_DATES = {
+const DAY_IN_MS = 1000 * 60 * 60 * 24;
+const RAMADAN_MONTH = 9;
+const MAX_LOOKAHEAD_DAYS = 370;
+
+// Intl desteklemezse eski tablo fallback olarak kullanılır.
+const FALLBACK_RAMAZAN_DATES = {
   2025: { start: new Date(2025, 2, 1),  end: new Date(2025, 2, 29) },
   2026: { start: new Date(2026, 1, 19), end: new Date(2026, 2, 19) },
   2027: { start: new Date(2027, 1, 8),  end: new Date(2027, 2, 8) },
@@ -11,35 +15,126 @@ const RAMAZAN_DATES = {
   2030: { start: new Date(2030, 0, 6),  end: new Date(2030, 1, 3) },
 };
 
-const getRamazanInfo = () => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+const hijriFormatter = (() => {
+  try {
+    return new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
+      day: 'numeric',
+      month: 'numeric',
+      year: 'numeric',
+    });
+  } catch {
+    return null;
+  }
+})();
 
-  const year = today.getFullYear();
+const getStartOfDay = (date) => {
+  const value = new Date(date);
+  value.setHours(0, 0, 0, 0);
+  return value;
+};
 
-  let ramazan = RAMAZAN_DATES[year];
+const getHijriDateParts = (date) => {
+  if (!hijriFormatter) return null;
 
-  if (ramazan && today > ramazan.end) {
-    ramazan = RAMAZAN_DATES[year + 1];
+  try {
+    const parts = hijriFormatter.formatToParts(new Date(date));
+    return {
+      day: Number(parts.find((part) => part.type === 'day')?.value),
+      month: Number(parts.find((part) => part.type === 'month')?.value),
+      year: Number(parts.find((part) => part.type === 'year')?.value),
+    };
+  } catch {
+    return null;
+  }
+};
+
+const addDays = (date, amount) => {
+  const value = new Date(date);
+  value.setDate(value.getDate() + amount);
+  return value;
+};
+
+const getRamazanInfoFromIntl = () => {
+  const today = getStartOfDay(new Date());
+  const hijriToday = getHijriDateParts(today);
+
+  if (!hijriToday) return null;
+
+  if (hijriToday.month === RAMADAN_MONTH) {
+    let ramazanEnd = today;
+
+    for (let offset = 1; offset <= 35; offset += 1) {
+      const candidate = addDays(today, offset);
+      const hijriCandidate = getHijriDateParts(candidate);
+
+      if (!hijriCandidate || hijriCandidate.month !== RAMADAN_MONTH) {
+        ramazanEnd = addDays(candidate, -1);
+        break;
+      }
+
+      ramazanEnd = candidate;
+    }
+
+    return {
+      type: 'current',
+      day: hijriToday.day,
+      remaining: Math.max(0, Math.floor((ramazanEnd - today) / DAY_IN_MS)),
+      isKadirGecesi: hijriToday.day === 27,
+    };
   }
 
-  if (!ramazan) return null;
+  for (let offset = 1; offset <= MAX_LOOKAHEAD_DAYS; offset += 1) {
+    const candidate = addDays(today, offset);
+    const hijriCandidate = getHijriDateParts(candidate);
 
-  if (today < ramazan.start) {
-    const diffTime = ramazan.start - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return { type: 'countdown', days: diffDays };
-  } else if (today >= ramazan.start && today <= ramazan.end) {
-    const diffTime = today - ramazan.start;
-    const currentDay = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    const remainingTime = ramazan.end - today;
-    const remainingDays = Math.floor(remainingTime / (1000 * 60 * 60 * 24));
-    const isKadirGecesi = currentDay === 27;
-    return { type: 'current', day: currentDay, remaining: remainingDays, isKadirGecesi };
+    if (
+      hijriCandidate?.month === RAMADAN_MONTH &&
+      hijriCandidate?.day === 1
+    ) {
+      return { type: 'countdown', days: offset };
+    }
   }
 
   return null;
 };
+
+const getRamazanInfoFromFallback = () => {
+  const today = getStartOfDay(new Date());
+  const year = today.getFullYear();
+
+  let ramazan = FALLBACK_RAMAZAN_DATES[year];
+
+  if (ramazan && today > getStartOfDay(ramazan.end)) {
+    ramazan = FALLBACK_RAMAZAN_DATES[year + 1];
+  }
+
+  if (!ramazan) return null;
+
+  const ramazanStart = getStartOfDay(ramazan.start);
+  const ramazanEnd = getStartOfDay(ramazan.end);
+
+  if (today < ramazanStart) {
+    return {
+      type: 'countdown',
+      days: Math.ceil((ramazanStart - today) / DAY_IN_MS),
+    };
+  }
+
+  if (today <= ramazanEnd) {
+    const currentDay = Math.floor((today - ramazanStart) / DAY_IN_MS) + 1;
+    return {
+      type: 'current',
+      day: currentDay,
+      remaining: Math.floor((ramazanEnd - today) / DAY_IN_MS),
+      isKadirGecesi: currentDay === 27,
+    };
+  }
+
+  return null;
+};
+
+const getRamazanInfo = () =>
+  getRamazanInfoFromIntl() || getRamazanInfoFromFallback();
 
 const prayerNamesSimple = {
   Imsak: 'İmsak',
@@ -58,26 +153,36 @@ const prayerNamesAll = {
 const allPrayers = ['Imsak', 'Gunes', 'Ogle', 'Ikindi', 'Aksam', 'Yatsi'];
 const mainPrayers = ['Imsak', 'Aksam'];
 
-const PrayerTimes = ({ times, showAllTimes }) => {
-  const [nextPrayerKey, setNextPrayerKey] = useState(null);
+const PrayerTimes = ({ times, nextTimes, showAllTimes }) => {
+  const [nextPrayer, setNextPrayer] = useState(null);
   const [ramazanInfo, setRamazanInfo] = useState(null);
 
   useEffect(() => {
     if (!times) return;
 
     const updateNext = () => {
-      const next = getNextPrayer(times);
-      setNextPrayerKey(next?.key || null);
+      const next = showAllTimes
+        ? getNextPrayer(times, nextTimes)
+        : getNextMainPrayer(times, nextTimes);
+
+      setNextPrayer(next);
     };
 
     updateNext();
     const interval = setInterval(updateNext, 60000);
 
     return () => clearInterval(interval);
-  }, [times]);
+  }, [times, nextTimes, showAllTimes]);
 
   useEffect(() => {
-    setRamazanInfo(getRamazanInfo());
+    const updateRamazanInfo = () => {
+      setRamazanInfo(getRamazanInfo());
+    };
+
+    updateRamazanInfo();
+
+    const interval = setInterval(updateRamazanInfo, 60000);
+    return () => clearInterval(interval);
   }, []);
 
   if (!times) {
@@ -90,6 +195,13 @@ const PrayerTimes = ({ times, showAllTimes }) => {
 
   const prayerOrder = showAllTimes ? allPrayers : mainPrayers;
   const prayerNames = showAllTimes ? prayerNamesAll : prayerNamesSimple;
+  const getPrayerTime = (key) => {
+    if (nextPrayer?.isTomorrow && nextPrayer.key === key) {
+      return nextPrayer.time;
+    }
+
+    return times[key];
+  };
 
   const renderRamazanBadge = () => {
     if (!ramazanInfo || showAllTimes) return null;
@@ -97,9 +209,9 @@ const PrayerTimes = ({ times, showAllTimes }) => {
     if (ramazanInfo.type === 'countdown') {
       return (
         <div className="ramazan-badge">
-          <span className="ramazan-text">Ramazan'a</span>
+          <span className="ramazan-text">Ramazan&apos;a kalan süre</span>
           <span className="ramazan-highlight">{ramazanInfo.days}</span>
-          <span className="ramazan-text">gün kaldı</span>
+          <span className="ramazan-text">gün</span>
         </div>
       );
     }
@@ -135,10 +247,10 @@ const PrayerTimes = ({ times, showAllTimes }) => {
         {prayerOrder.map((key) => (
           <li
             key={key}
-            className={`prayer-item ${nextPrayerKey === key ? 'active' : ''}`}
+            className={`prayer-item ${nextPrayer?.key === key ? 'active' : ''}`}
           >
             <span className="prayer-name">{prayerNames[key]}</span>
-            <span className="prayer-time">{times[key]}</span>
+            <span className="prayer-time">{getPrayerTime(key)}</span>
           </li>
         ))}
       </ul>

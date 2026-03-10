@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { getNextPrayer, getTimeDifference, parseTimeToDate } from '../utils/timeUtils';
+import {
+  getNextMainPrayer,
+  getNextPrayer,
+  getTimeDifference,
+} from '../utils/timeUtils';
 
-const Countdown = ({ times, showAllTimes }) => {
+const Countdown = ({ times, nextTimes, showAllTimes }) => {
   const [countdown, setCountdown] = useState(null);
   const [nextPrayer, setNextPrayer] = useState(null);
 
@@ -12,9 +16,9 @@ const Countdown = ({ times, showAllTimes }) => {
       let next;
 
       if (showAllTimes) {
-        next = getNextPrayer(times);
+        next = getNextPrayer(times, nextTimes);
       } else {
-        next = getNextImsakOrIftar(times);
+        next = getNextMainPrayer(times, nextTimes);
       }
 
       setNextPrayer(next);
@@ -29,46 +33,7 @@ const Countdown = ({ times, showAllTimes }) => {
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
-  }, [times, showAllTimes]);
-
-  const getNextImsakOrIftar = (times) => {
-    const now = new Date();
-
-    const imsakTime = parseTimeToDate(times.Imsak);
-    const iftarTime = parseTimeToDate(times.Aksam);
-
-    if (now < imsakTime) {
-      return {
-        key: 'Imsak',
-        name: 'İmsak',
-        time: times.Imsak,
-        date: imsakTime,
-        isIftar: false,
-        isImsak: true
-      };
-    } else if (now < iftarTime) {
-      return {
-        key: 'Aksam',
-        name: 'İftar',
-        time: times.Aksam,
-        date: iftarTime,
-        isIftar: true,
-        isImsak: false
-      };
-    } else {
-      const tomorrowImsak = parseTimeToDate(times.Imsak);
-      tomorrowImsak.setDate(tomorrowImsak.getDate() + 1);
-      return {
-        key: 'Imsak',
-        name: 'İmsak',
-        time: times.Imsak,
-        date: tomorrowImsak,
-        isIftar: false,
-        isImsak: true,
-        isTomorrow: true
-      };
-    }
-  };
+  }, [times, nextTimes, showAllTimes]);
 
   if (!nextPrayer || !countdown) {
     return (
