@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useCities, useDistricts } from '../hooks/usePrayerTimes';
 import { isVirtualIstanbulDistrict } from '../utils/istanbulDistricts';
 
+const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
+
 const SettingsIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="4" y1="21" x2="4" y2="14"></line>
@@ -46,7 +48,14 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
   const { districts, loading: districtsLoading } = useDistricts(selectedCity?.SehirID);
 
   useEffect(() => {
-    if (isOpen && searchRef.current) {
+    if (!isOpen || !searchRef.current) return;
+
+    const isDesktop =
+      typeof window.matchMedia === 'function'
+        ? window.matchMedia(DESKTOP_MEDIA_QUERY).matches
+        : true;
+
+    if (isDesktop) {
       searchRef.current.focus();
     }
   }, [isOpen, step]);

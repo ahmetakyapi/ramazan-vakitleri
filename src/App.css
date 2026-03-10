@@ -272,6 +272,12 @@ body {
   flex-shrink: 0;
 }
 
+.close-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+}
+
 .back-btn:hover {
   background: rgba(255, 255, 255, 0.15);
   color: var(--text-primary);
