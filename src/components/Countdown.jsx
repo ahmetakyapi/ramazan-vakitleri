@@ -99,9 +99,9 @@ const Countdown = ({ times, nextTimes, showAllTimes }) => {
   };
 
   return (
-    <div className="countdown">
+    <div className="countdown" role="timer" aria-label={`${getTitle()} geri sayım`}>
       <div className="countdown-label">{getTitle()}</div>
-      <div className="countdown-time">
+      <div className="countdown-time" aria-live="polite" aria-atomic="true">
         {formatTime()}
       </div>
     </div>

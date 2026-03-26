@@ -1,8 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCities, useDistricts } from '../hooks/usePrayerTimes';
 import { isVirtualIstanbulDistrict } from '../utils/istanbulDistricts';
+import useGeolocation from '../hooks/useGeolocation';
 
 const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
+const FOCUSABLE_SELECTOR = 'button, input, [tabindex]:not([tabindex="-1"])';
 
 const SettingsIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -43,9 +45,25 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
   const [search, setSearch] = useState('');
   const [step, setStep] = useState('city'); // 'city' veya 'district'
   const searchRef = useRef(null);
+  const triggerRef = useRef(null);
+  const dropdownRef = useRef(null);
 
   const { cities, loading: citiesLoading } = useCities();
   const { districts, loading: districtsLoading } = useDistricts(selectedCity?.SehirID);
+  const { suggest: suggestCity } = useGeolocation(cities);
+
+  // onCityChange ref — effect dependency'den çıkarmak için
+  const onCityChangeRef = useRef(onCityChange);
+  onCityChangeRef.current = onCityChange;
+
+  // İlk yüklemede konum öner
+  useEffect(() => {
+    if (cities.length > 0) {
+      suggestCity((city) => {
+        onCityChangeRef.current(city);
+      });
+    }
+  }, [cities, suggestCity]);
 
   useEffect(() => {
     if (!isOpen || !searchRef.current) return;
@@ -79,15 +97,34 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
   useEffect(() => {
     if (!isOpen) return undefined;
 
-    const handleEscape = (event) => {
+    const handleKeyDown = (event) => {
       if (event.key === 'Escape') {
         setIsOpen(false);
         setSearch('');
+        triggerRef.current?.focus();
+        return;
+      }
+
+      // Focus trap
+      if (event.key === 'Tab' && dropdownRef.current) {
+        const focusable = dropdownRef.current.querySelectorAll(FOCUSABLE_SELECTOR);
+        if (focusable.length === 0) return;
+
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+
+        if (event.shiftKey && document.activeElement === first) {
+          event.preventDefault();
+          last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+          event.preventDefault();
+          first.focus();
+        }
       }
     };
 
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   const TOP_CITIES = ['İSTANBUL', 'ANKARA', 'İZMİR'];
@@ -136,6 +173,7 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
     onDistrictChange(district);
     setIsOpen(false);
     setSearch('');
+    triggerRef.current?.focus();
   };
 
   const handleBack = () => {
@@ -146,6 +184,7 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
   const handleClose = () => {
     setIsOpen(false);
     setSearch('');
+    triggerRef.current?.focus();
   };
 
   const displayName = selectedDistrict
@@ -157,9 +196,12 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
   return (
     <div className="city-selector">
       <button
+        ref={triggerRef}
         type="button"
         className="city-selector-button"
         onClick={handleOpen}
+        aria-haspopup="dialog"
+        aria-expanded={isOpen}
       >
         <span className="city-icon">
           <SettingsIcon />
@@ -168,7 +210,7 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
       </button>
 
       {isOpen && (
-        <div className="city-dropdown">
+        <div className="city-dropdown" ref={dropdownRef} role="dialog" aria-label="Konum seçici" aria-modal="true">
           <div className="city-sheet-handle" aria-hidden="true" />
           <div className="dropdown-header">
             <div className="dropdown-header-main">
@@ -212,7 +254,7 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
               </span>
             </div>
           )}
-          <ul className="city-list">
+          <ul className="city-list" role="listbox" aria-label={step === 'city' ? 'Şehirler' : 'İlçeler'}>
             {step === 'city' && (
               citiesLoading ? (
                 <li className="city-item loading-item">Yükleniyor...</li>
@@ -223,6 +265,10 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
                       key={city.SehirID}
                       className={`city-item ${selectedCity?.SehirID === city.SehirID ? 'active' : ''}`}
                       onClick={() => handleCitySelect(city)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCitySelect(city)}
+                      role="option"
+                      aria-selected={selectedCity?.SehirID === city.SehirID}
+                      tabIndex={0}
                     >
                       <span className="city-item-content">
                         <span className="city-item-label">{formatName(city.SehirAdi)}</span>
@@ -244,6 +290,10 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
                       key={district.IlceID}
                       className={`city-item ${selectedDistrict?.IlceID === district.IlceID ? 'active' : ''}`}
                       onClick={() => handleDistrictSelect(district)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleDistrictSelect(district)}
+                      role="option"
+                      aria-selected={selectedDistrict?.IlceID === district.IlceID}
+                      tabIndex={0}
                     >
                       <span className="city-item-content">
                         <span className="city-item-label">{formatName(district.IlceAdi)}</span>

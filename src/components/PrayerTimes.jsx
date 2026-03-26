@@ -243,11 +243,12 @@ const PrayerTimes = ({ times, nextTimes, showAllTimes }) => {
 
   return (
     <div className="prayer-times">
-      <ul className="prayer-list" key={showAllTimes ? 'all' : 'main'}>
+      <ul className="prayer-list" key={showAllTimes ? 'all' : 'main'} aria-label="Namaz vakitleri">
         {prayerOrder.map((key) => (
           <li
             key={key}
             className={`prayer-item ${nextPrayer?.key === key ? 'active' : ''}`}
+            aria-current={nextPrayer?.key === key ? 'true' : undefined}
           >
             <span className="prayer-name">{prayerNames[key]}</span>
             <span className="prayer-time">{getPrayerTime(key)}</span>

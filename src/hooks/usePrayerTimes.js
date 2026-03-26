@@ -1,8 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { augmentDistricts } from '../utils/istanbulDistricts';
+import { getCache, setCache } from '../utils/apiCache';
 
 const API_BASE = 'https://ezanvakti.emushaf.net';
 const TURKEY_CODE = '2';
+const MAX_RETRIES = 3;
+const RETRY_DELAYS = [2000, 5000, 10000];
 
 const formatApiDate = (date) =>
   `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1)
@@ -26,25 +29,46 @@ const getVisiblePrayerTimes = (data, currentDate = new Date()) => {
   };
 };
 
+const fetchWithRetry = async (url, signal, retries = MAX_RETRIES) => {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url, { signal });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return await res.json();
+    } catch (err) {
+      if (err.name === 'AbortError') throw err;
+      if (attempt === retries) throw err;
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
+    }
+  }
+};
+
 /**
- * Türkiye şehirlerini çeken hook
+ * Türkiye şehirlerini çeken hook (cache destekli)
  */
 export const useCities = () => {
-  const [cities, setCities] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [cities, setCities] = useState(() => getCache('cities') || []);
+  const [loading, setLoading] = useState(() => !getCache('cities'));
 
   useEffect(() => {
+    const cached = getCache('cities');
+    if (cached && cached.length > 0) {
+      setCities(cached);
+      setLoading(false);
+      return;
+    }
+
     const controller = new AbortController();
 
     const fetchCities = async () => {
       try {
-        const res = await fetch(`${API_BASE}/sehirler/${TURKEY_CODE}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error('Şehirler yüklenemedi');
-        const data = await res.json();
+        const data = await fetchWithRetry(
+          `${API_BASE}/sehirler/${TURKEY_CODE}`,
+          controller.signal
+        );
         if (controller.signal.aborted) return;
         setCities(data);
+        setCache('cities', null, data);
       } catch (error) {
         if (error.name === 'AbortError') return;
         setCities([]);
@@ -63,7 +87,7 @@ export const useCities = () => {
 };
 
 /**
- * Seçilen şehrin ilçelerini çeken hook
+ * Seçilen şehrin ilçelerini çeken hook (cache destekli)
  */
 export const useDistricts = (cityId) => {
   const [districts, setDistricts] = useState([]);
@@ -76,18 +100,26 @@ export const useDistricts = (cityId) => {
       return;
     }
 
+    const cached = getCache('districts', cityId);
+    if (cached && cached.length > 0) {
+      setDistricts(cached);
+      setLoading(false);
+      return;
+    }
+
     const controller = new AbortController();
 
     const fetchDistricts = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`${API_BASE}/ilceler/${cityId}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error('İlçeler yüklenemedi');
-        const data = await res.json();
+        const data = await fetchWithRetry(
+          `${API_BASE}/ilceler/${cityId}`,
+          controller.signal
+        );
         if (controller.signal.aborted) return;
-        setDistricts(augmentDistricts(cityId, data));
+        const augmented = augmentDistricts(cityId, data);
+        setDistricts(augmented);
+        setCache('districts', cityId, augmented);
       } catch (error) {
         if (error.name === 'AbortError') return;
         setDistricts([]);
@@ -107,6 +139,9 @@ export const useDistricts = (cityId) => {
 
 /**
  * Seçilen ilçenin namaz vakitlerini çeken hook
+ * - Cache destekli
+ * - Retry mekanizmalı
+ * - Gece yarısı geçişinde otomatik yeniden fetch
  */
 const usePrayerTimes = (districtId) => {
   const [times, setTimes] = useState(null);
@@ -114,6 +149,61 @@ const usePrayerTimes = (districtId) => {
   const [allTimes, setAllTimes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const lastFetchDateRef = useRef(null);
+
+  const fetchTimesData = useCallback(
+    async (signal) => {
+      if (!districtId) return;
+
+      setLoading(true);
+      setError(null);
+
+      // Önce cache'e bak
+      const cached = getCache('times', districtId);
+      if (cached && Array.isArray(cached) && cached.length > 0) {
+        const { current, next } = getVisiblePrayerTimes(cached);
+        if (current) {
+          setAllTimes(cached);
+          setTimes(current);
+          setNextTimes(next);
+          setLoading(false);
+          lastFetchDateRef.current = new Date().toDateString();
+          return;
+        }
+      }
+
+      try {
+        const data = await fetchWithRetry(
+          `${API_BASE}/vakitler/${districtId}`,
+          signal
+        );
+        if (signal.aborted) return;
+
+        const { current, next } = getVisiblePrayerTimes(data);
+        setAllTimes(data);
+        setTimes(current);
+        setNextTimes(next);
+        setCache('times', districtId, data);
+        lastFetchDateRef.current = new Date().toDateString();
+      } catch (err) {
+        if (err.name === 'AbortError') return;
+        // Hata durumunda cache'den göstermeye çalış
+        if (cached && Array.isArray(cached) && cached.length > 0) {
+          const { current, next } = getVisiblePrayerTimes(cached);
+          setAllTimes(cached);
+          setTimes(current);
+          setNextTimes(next);
+        } else {
+          setError(err.message);
+        }
+      } finally {
+        if (!signal.aborted) {
+          setLoading(false);
+        }
+      }
+    },
+    [districtId]
+  );
 
   useEffect(() => {
     if (!districtId) {
@@ -126,52 +216,45 @@ const usePrayerTimes = (districtId) => {
     }
 
     const controller = new AbortController();
-
-    const fetchTimes = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const res = await fetch(`${API_BASE}/vakitler/${districtId}`, {
-          signal: controller.signal,
-        });
-        if (!res.ok) throw new Error('Vakitler yüklenemedi');
-        const data = await res.json();
-        if (controller.signal.aborted) return;
-
-        const { current, next } = getVisiblePrayerTimes(data);
-        setAllTimes(data);
-        setTimes(current);
-        setNextTimes(next);
-      } catch (err) {
-        if (err.name === 'AbortError') return;
-        setError(err.message);
-      } finally {
-        if (controller.signal.aborted) return;
-        setLoading(false);
-      }
-    };
-
-    fetchTimes();
-
+    fetchTimesData(controller.signal);
     return () => controller.abort();
-  }, [districtId]);
+  }, [districtId, fetchTimesData]);
 
-  // Gün değiştiğinde bugünün vakitlerini güncelle
+  // Gün değiştiğinde bugünün vakitlerini güncelle + gece yarısı yeni fetch
   useEffect(() => {
     if (allTimes.length === 0) return;
 
     const checkDate = () => {
+      const today = new Date().toDateString();
+
+      // Gün değişti — mevcut datada bugün var mı kontrol et
       const { current, next } = getVisiblePrayerTimes(allTimes);
-      setTimes(current);
-      setNextTimes(next);
+
+      if (current) {
+        setTimes(current);
+        setNextTimes(next);
+      }
+
+      // Gün değiştiyse ve bugünkü veri yoksa, yeniden fetch et
+      if (today !== lastFetchDateRef.current && !current) {
+        const controller = new AbortController();
+        fetchTimesData(controller.signal);
+      }
     };
 
-    const interval = setInterval(checkDate, 60000);
+    const interval = setInterval(checkDate, 30000);
     return () => clearInterval(interval);
-  }, [allTimes]);
+  }, [allTimes, fetchTimesData]);
 
-  return { times, nextTimes, loading, error };
+  const retryControllerRef = useRef(null);
+
+  const retry = useCallback(() => {
+    retryControllerRef.current?.abort();
+    retryControllerRef.current = new AbortController();
+    fetchTimesData(retryControllerRef.current.signal);
+  }, [fetchTimesData]);
+
+  return { times, nextTimes, loading, error, retry };
 };
 
 export default usePrayerTimes;

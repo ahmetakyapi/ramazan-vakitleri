@@ -1528,3 +1528,151 @@ body {
     padding: 12px 20px;
   }
 }
+
+/* ========================================
+   Notification Toggle (Footer)
+   ======================================== */
+.notification-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  font-family: inherit;
+  transition: var(--transition);
+}
+
+.notification-toggle svg {
+  opacity: 0.5;
+  transition: var(--transition);
+}
+
+.notification-toggle.active svg {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.notification-label {
+  font-size: 0.7rem;
+  letter-spacing: 0.3px;
+}
+
+.notification-toggle.active .notification-label {
+  color: var(--accent);
+}
+
+/* ========================================
+   İftar Kutlama Animasyonu
+   ======================================== */
+.iftar-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  animation: iftarFadeIn 0.5s ease-out forwards,
+             iftarFadeOut 1s ease-in 6s forwards;
+}
+
+.iftar-celebration-content {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.iftar-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  animation: iftarSlideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.iftar-emoji {
+  font-size: 4rem;
+  filter: drop-shadow(0 0 20px rgba(255, 215, 0, 0.5));
+  animation: iftarPulse 2s ease-in-out infinite;
+}
+
+.iftar-text {
+  font-size: 2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #ffd700 0%, #f472b6 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: center;
+  letter-spacing: 1px;
+}
+
+.iftar-particles {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.iftar-particle {
+  position: absolute;
+  bottom: -10px;
+  left: var(--x);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: iftarParticleRise var(--duration) ease-out var(--delay) forwards;
+  opacity: 0;
+}
+
+.iftar-particle:nth-child(odd) {
+  background: var(--accent-pink);
+  width: 4px;
+  height: 4px;
+}
+
+.iftar-particle:nth-child(3n) {
+  background: #ffd700;
+  width: 8px;
+  height: 8px;
+}
+
+@keyframes iftarFadeIn {
+  from { opacity: 0; background: rgba(0, 0, 0, 0); }
+  to { opacity: 1; background: rgba(0, 0, 0, 0.6); }
+}
+
+@keyframes iftarFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes iftarSlideUp {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes iftarPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes iftarParticleRise {
+  0% {
+    transform: translateY(0) scale(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-20vh) scale(1);
+  }
+  100% {
+    transform: translateY(-100vh) scale(0.3);
+    opacity: 0;
+  }
+}

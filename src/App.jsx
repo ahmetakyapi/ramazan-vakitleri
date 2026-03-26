@@ -3,7 +3,9 @@ import { Analytics } from "@vercel/analytics/react";
 import CitySelector from "./components/CitySelector";
 import Countdown from "./components/Countdown";
 import PrayerTimes from "./components/PrayerTimes";
+import IftarCelebration from "./components/IftarCelebration";
 import usePrayerTimes from "./hooks/usePrayerTimes";
+import useNotification from "./hooks/useNotification";
 import {
   getPrayerDistrictId,
   normalizeDistrictSelection,
@@ -24,6 +26,15 @@ const DEFAULT_DISTRICT = {
   IlceAdi: "İSTANBUL",
   IlceAdiEn: "ISTANBUL",
 };
+
+// Service Worker kaydı
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {
+      // SW kaydı başarısız, sessizce devam et
+    });
+  });
+}
 
 function App() {
   const [selectedCity, setSelectedCity] = useState(() => {
@@ -62,9 +73,11 @@ function App() {
     selectedDistrict
   );
 
-  const { times, nextTimes, loading, error } = usePrayerTimes(
+  const { times, nextTimes, loading, error, retry } = usePrayerTimes(
     getPrayerDistrictId(effectiveDistrict)
   );
+
+  const notification = useNotification(times, nextTimes);
 
   const handleCityChange = (city) => {
     setSelectedCity(city);
@@ -85,11 +98,7 @@ function App() {
   };
 
   useEffect(() => {
-    const updateTime = () => {
-      setCurrentTime(new Date());
-    };
-
-    const interval = setInterval(updateTime, 1000);
+    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
@@ -134,22 +143,22 @@ function App() {
           onCityChange={handleCityChange}
           onDistrictChange={handleDistrictChange}
         />
-        <div className="current-time">{formatCurrentTime()}</div>
+        <div className="current-time" role="timer" aria-label="Şu anki saat">
+          {formatCurrentTime()}
+        </div>
       </header>
 
       <main className="main">
         {loading && (
-          <div className="loading-state">
+          <output className="loading-state" aria-label="Yükleniyor">
             <div className="spinner"></div>
-          </div>
+          </output>
         )}
 
         {error && (
-          <div className="error-state">
+          <div className="error-state" role="alert">
             <p>Bağlantı hatası</p>
-            <button onClick={() => window.location.reload()}>
-              Tekrar Dene
-            </button>
+            <button onClick={retry}>Tekrar Dene</button>
           </div>
         )}
 
@@ -160,16 +169,20 @@ function App() {
               nextTimes={nextTimes}
               showAllTimes={showAllTimes}
             />
-            <div className="view-toggle">
+            <div className="view-toggle" role="tablist" aria-label="Görünüm seçimi">
               <button
                 className={`toggle-btn ${!showAllTimes ? "active" : ""}`}
                 onClick={() => !showAllTimes || toggleViewMode()}
+                role="tab"
+                aria-selected={!showAllTimes}
               >
                 İmsak & İftar
               </button>
               <button
                 className={`toggle-btn ${showAllTimes ? "active" : ""}`}
                 onClick={() => showAllTimes || toggleViewMode()}
+                role="tab"
+                aria-selected={showAllTimes}
               >
                 Tüm Vakitler
               </button>
@@ -179,22 +192,49 @@ function App() {
               nextTimes={nextTimes}
               showAllTimes={showAllTimes}
             />
+            <IftarCelebration times={times} />
           </>
         )}
 
         {!loading && !error && !times && effectiveDistrict && (
-          <div className="error-state">
+          <div className="error-state" role="alert">
             <p>Bugün için vakit bilgisi bulunamadı</p>
           </div>
         )}
 
         {!effectiveDistrict && (
-          <div className="error-state">
+          <div className="error-state" role="alert">
             <p>Lütfen bir ilçe seçin</p>
           </div>
         )}
       </main>
       <footer className="app-footer" aria-label="Site bilgileri">
+        {notification.supported && (
+          <button
+            className={`footer-link notification-toggle ${notification.enabled ? 'active' : ''}`}
+            onClick={notification.toggle}
+            aria-label={notification.enabled ? 'Bildirimleri kapat' : 'Bildirimleri aç'}
+            title={notification.enabled ? 'Bildirimler açık' : 'Bildirim hatırlatıcı'}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="14" height="14" strokeLinecap="round" strokeLinejoin="round">
+              {notification.enabled ? (
+                <>
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                </>
+              ) : (
+                <>
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  <line x1="1" y1="1" x2="23" y2="23" />
+                </>
+              )}
+            </svg>
+            <span className="notification-label">
+              {notification.enabled ? 'Bildirim Açık' : 'Hatırlatıcı'}
+            </span>
+          </button>
+        )}
         <a
           href="https://ezanvakti.emushaf.net"
           target="_blank"
