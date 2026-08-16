@@ -91,6 +91,7 @@ body {
 .current-time .time-hours,
 .current-time .time-minutes {
   background: linear-gradient(135deg, #f5e6d3 0%, #e8d4b8 30%, #d4b896 60%, #c9a87c 100%);
+  color: #e8d4b8;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -99,6 +100,7 @@ body {
 
 .current-time .time-separator {
   background: linear-gradient(135deg, #ffd700 0%, #ffb347 50%, #ff6b6b 100%);
+  color: #ffb347;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -109,6 +111,7 @@ body {
 .current-time .time-seconds {
   font-size: 1.25rem;
   background: linear-gradient(135deg, #e8d4b8 0%, #c9a87c 100%);
+  color: #d4b896;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -497,6 +500,7 @@ body {
 .countdown-time .time-number {
   font-weight: 600;
   background: var(--gradient-text);
+  color: var(--accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -505,6 +509,7 @@ body {
 .countdown-time .time-unit {
   font-weight: 300;
   background: var(--gradient-text-alt);
+  color: var(--text-primary);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -628,6 +633,7 @@ body {
 .prayer-item.active .prayer-name {
   font-weight: 500;
   background: var(--gradient-text);
+  color: var(--accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -642,6 +648,7 @@ body {
 
 .prayer-item.active .prayer-time {
   background: var(--gradient-text);
+  color: var(--accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -690,6 +697,7 @@ body {
   font-size: 1.75rem;
   font-weight: 600;
   background: var(--gradient-text);
+  color: var(--accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -704,6 +712,7 @@ body {
   font-size: 1.1rem;
   font-weight: 500;
   background: var(--gradient-text);
+  color: var(--accent);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -769,6 +778,7 @@ body {
   font-size: 1.1rem;
   font-weight: 600;
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 50%, #d97706 100%);
+  color: #fbbf24;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -1604,6 +1614,7 @@ body {
   font-size: 2rem;
   font-weight: 700;
   background: linear-gradient(135deg, #ffd700 0%, #f472b6 50%, #a78bfa 100%);
+  color: #ffd700;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
