@@ -800,21 +800,20 @@ body {
   align-items: center;
   padding: 12px 28px;
   padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
-  font-size: 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
   background: linear-gradient(to top, rgba(26, 26, 46, 0.98) 0%, rgba(26, 26, 46, 0.85) 60%, transparent 100%);
   z-index: 50;
 }
 
 .footer-link {
-  color: var(--text-muted);
+  color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.2s ease;
-  opacity: 0.6;
 }
 
 .footer-link:hover {
-  color: var(--text-secondary);
-  opacity: 0.9;
+  color: var(--text-primary);
 }
 
 .github-link {
@@ -1232,7 +1231,7 @@ body {
     background: none;
     padding: 14px 0 0;
     margin-top: 18px;
-    font-size: 0.7rem;
+    font-size: 0.75rem;
   }
 }
 
@@ -1563,8 +1562,8 @@ body {
 }
 
 .notification-label {
-  font-size: 0.7rem;
-  letter-spacing: 0.3px;
+  font-size: 0.75rem;
+  letter-spacing: 0;
 }
 
 .notification-toggle.active .notification-label {
