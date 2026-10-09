@@ -229,10 +229,27 @@ const PrayerTimes = ({ times, nextTimes, showAllTimes }) => {
             </div>
           )}
           <div className="ramazan-badge ramazan-active">
-            <span className="ramazan-day">{ramazanInfo.day}. Gün</span>
-            {ramazanInfo.remaining > 0 && (
-              <span className="ramazan-remaining">{ramazanInfo.remaining} gün kaldı</span>
-            )}
+            <div className="ramazan-active-row">
+              <span className="ramazan-day">{ramazanInfo.day}. Gün</span>
+              {ramazanInfo.remaining > 0 && (
+                <span className="ramazan-remaining">{ramazanInfo.remaining} gün kaldı</span>
+              )}
+            </div>
+            <span
+              className="ramazan-progress"
+              role="progressbar"
+              aria-label="Ramazan ilerlemesi"
+              aria-valuemin={1}
+              aria-valuemax={ramazanInfo.day + ramazanInfo.remaining}
+              aria-valuenow={ramazanInfo.day}
+            >
+              <span
+                className="ramazan-progress-fill"
+                style={{
+                  transform: `scaleX(${ramazanInfo.day / (ramazanInfo.day + ramazanInfo.remaining)})`,
+                }}
+              />
+            </span>
           </div>
         </>
       );
@@ -244,16 +261,30 @@ const PrayerTimes = ({ times, nextTimes, showAllTimes }) => {
   return (
     <div className="prayer-times">
       <ul className="prayer-list" key={showAllTimes ? 'all' : 'main'} aria-label="Namaz vakitleri">
-        {prayerOrder.map((key) => (
-          <li
-            key={key}
-            className={`prayer-item ${nextPrayer?.key === key ? 'active' : ''}`}
-            aria-current={nextPrayer?.key === key ? 'true' : undefined}
-          >
-            <span className="prayer-name">{prayerNames[key]}</span>
-            <span className="prayer-time">{getPrayerTime(key)}</span>
-          </li>
-        ))}
+        {prayerOrder.map((key, index) => {
+          const isActive = nextPrayer?.key === key;
+          const nextIndex = prayerOrder.indexOf(nextPrayer?.key);
+          // Tüm vakitler görünümünde bugün geçmiş vakitler sönükleşir
+          const isPast =
+            showAllTimes &&
+            nextPrayer &&
+            !isActive &&
+            (nextPrayer.isTomorrow || index < nextIndex);
+
+          return (
+            <li
+              key={key}
+              className={`prayer-item ${isActive ? 'active' : ''} ${isPast ? 'past' : ''}`}
+              aria-current={isActive ? 'true' : undefined}
+            >
+              <span className="prayer-name">
+                {isActive && <span className="prayer-dot" aria-hidden="true" />}
+                {prayerNames[key]}
+              </span>
+              <span className="prayer-time">{getPrayerTime(key)}</span>
+            </li>
+          );
+        })}
       </ul>
       {renderRamazanBadge()}
     </div>

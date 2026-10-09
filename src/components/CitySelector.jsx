@@ -20,6 +20,12 @@ const SettingsIcon = () => (
   </svg>
 );
 
+const CheckIcon = () => (
+  <svg className="city-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
 const CloseIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <line x1="18" y1="6" x2="6" y2="18"></line>
@@ -254,7 +260,7 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
               </span>
             </div>
           )}
-          <ul className="city-list" role="listbox" aria-label={step === 'city' ? 'Şehirler' : 'İlçeler'}>
+          <ul className="city-list" key={step} role="listbox" aria-label={step === 'city' ? 'Şehirler' : 'İlçeler'}>
             {step === 'city' && (
               citiesLoading ? (
                 <li className="city-item loading-item">Yükleniyor...</li>
@@ -273,10 +279,11 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
                       <span className="city-item-content">
                         <span className="city-item-label">{formatName(city.SehirAdi)}</span>
                       </span>
+                      <CheckIcon />
                     </li>
                   ))
                 ) : (
-                  <li className="city-item empty-item">Sonuc bulunamadı</li>
+                  <li className="city-item empty-item">Sonuç bulunamadı</li>
                 )
               )
             )}
@@ -303,10 +310,11 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
                           </span>
                         )}
                       </span>
+                      <CheckIcon />
                     </li>
                   ))
                 ) : (
-                  <li className="city-item empty-item">Sonuc bulunamadı</li>
+                  <li className="city-item empty-item">Sonuç bulunamadı</li>
                 )
               )
             )}

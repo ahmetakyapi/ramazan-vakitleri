@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, memo } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import CitySelector from "./components/CitySelector";
 import Countdown from "./components/Countdown";
@@ -36,6 +36,36 @@ if ("serviceWorker" in navigator) {
   });
 }
 
+// Saat kendi bileşeninde: her saniye sadece bu küçük parça yeniden çizilir,
+// uygulamanın geri kalanı (şehir listesi, vakitler) etkilenmez.
+const LiveClock = memo(function LiveClock() {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    let timeout;
+    // Saniye sınırına hizalan: rakamlar tam saniyede, kaymadan değişir
+    const tick = () => {
+      setNow(new Date());
+      timeout = setTimeout(tick, 1000 - (Date.now() % 1000));
+    };
+    timeout = setTimeout(tick, 1000 - (Date.now() % 1000));
+    return () => clearTimeout(timeout);
+  }, []);
+
+  const hours = now.getHours().toString().padStart(2, "0");
+  const minutes = now.getMinutes().toString().padStart(2, "0");
+  const seconds = now.getSeconds().toString().padStart(2, "0");
+
+  return (
+    <div className="current-time" role="timer" aria-label="Şu anki saat">
+      <span className="time-hours">{hours}</span>
+      <span className="time-separator">:</span>
+      <span className="time-minutes">{minutes}</span>
+      <span className="time-seconds">{seconds}</span>
+    </div>
+  );
+});
+
 function App() {
   const [selectedCity, setSelectedCity] = useState(() => {
     const saved = localStorage.getItem(CITY_KEY);
@@ -65,8 +95,6 @@ function App() {
     const saved = localStorage.getItem(VIEW_MODE_KEY);
     return saved === "true";
   });
-
-  const [currentTime, setCurrentTime] = useState(new Date());
 
   const effectiveDistrict = normalizeDistrictSelection(
     selectedCity,
@@ -98,11 +126,6 @@ function App() {
   };
 
   useEffect(() => {
-    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(interval);
-  }, []);
-
-  useEffect(() => {
     if (!selectedDistrict || !effectiveDistrict) {
       return;
     }
@@ -118,21 +141,6 @@ function App() {
     }
   }, [selectedDistrict, effectiveDistrict]);
 
-  const formatCurrentTime = () => {
-    const hours = currentTime.getHours().toString().padStart(2, "0");
-    const minutes = currentTime.getMinutes().toString().padStart(2, "0");
-    const seconds = currentTime.getSeconds().toString().padStart(2, "0");
-
-    return (
-      <>
-        <span className="time-hours">{hours}</span>
-        <span className="time-separator">:</span>
-        <span className="time-minutes">{minutes}</span>
-        <span className="time-seconds">{seconds}</span>
-      </>
-    );
-  };
-
   return (
     <div className="app">
       <header className="header">
@@ -143,15 +151,17 @@ function App() {
           onCityChange={handleCityChange}
           onDistrictChange={handleDistrictChange}
         />
-        <div className="current-time" role="timer" aria-label="Şu anki saat">
-          {formatCurrentTime()}
-        </div>
+        <LiveClock />
       </header>
 
       <main className="main">
         {loading && (
-          <output className="loading-state" aria-label="Yükleniyor">
-            <div className="spinner"></div>
+          <output className="skeleton" aria-label="Vakitler yükleniyor">
+            <span className="skeleton-line skeleton-label" />
+            <span className="skeleton-line skeleton-countdown" />
+            <span className="skeleton-line skeleton-toggle" />
+            <span className="skeleton-line skeleton-row" />
+            <span className="skeleton-line skeleton-row" />
           </output>
         )}
 
@@ -169,7 +179,12 @@ function App() {
               nextTimes={nextTimes}
               showAllTimes={showAllTimes}
             />
-            <div className="view-toggle" role="tablist" aria-label="Görünüm seçimi">
+            <div
+              className={`view-toggle ${showAllTimes ? "is-all" : ""}`}
+              role="tablist"
+              aria-label="Görünüm seçimi"
+            >
+              <span className="toggle-indicator" aria-hidden="true" />
               <button
                 className={`toggle-btn ${!showAllTimes ? "active" : ""}`}
                 onClick={() => !showAllTimes || toggleViewMode()}

@@ -10,7 +10,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "test": "node --test"
+    "test": "TZ=Europe/Istanbul node --test"
   },
   "dependencies": {
     "@vercel/analytics": "^1.6.1",
