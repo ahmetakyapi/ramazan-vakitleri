@@ -142,6 +142,42 @@ export const getNextMainPrayer = (
   };
 };
 
+const PRAYER_ORDER = ['Imsak', 'Gunes', 'Ogle', 'Ikindi', 'Aksam', 'Yatsi'];
+
+/**
+ * Siradaki vakitten bir onceki vaktin tarihini bulur (ilerleme cubugu icin)
+ * @param {Object} next - getNextPrayer / getNextMainPrayer sonucu
+ * @param {Object} times
+ * @param {boolean} showAllTimes
+ * @returns {Date|null}
+ */
+export const getPreviousPrayerDate = (next, times, showAllTimes) => {
+  if (!next || !times) return null;
+
+  const order = showAllTimes ? PRAYER_ORDER : ['Imsak', 'Aksam'];
+  const index = order.indexOf(next.key);
+  if (index === -1) return null;
+
+  const dayBefore = new Date(next.date);
+  dayBefore.setDate(dayBefore.getDate() - 1);
+
+  if (index === 0) {
+    return parseTimeToDate(times[order[order.length - 1]], dayBefore);
+  }
+
+  return parseTimeToDate(times[order[index - 1]], next.date);
+};
+
+/**
+ * Iki vakit arasindaki ilerleme orani (0..1)
+ */
+export const getProgress = (start, end, now = new Date()) => {
+  if (!start || !end) return 0;
+  const span = end.getTime() - start.getTime();
+  if (span <= 0) return 0;
+  return Math.min(1, Math.max(0, (now.getTime() - start.getTime()) / span));
+};
+
 /**
  * Geri sayim string'i olusturur
  * @param {Object} diff - { hours, minutes, seconds }

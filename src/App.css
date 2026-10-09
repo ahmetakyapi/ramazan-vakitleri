@@ -195,7 +195,6 @@ body {
   overflow: hidden;
   z-index: 100;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(20px);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -1152,7 +1151,6 @@ body {
       0 0 0 1px rgba(255, 255, 255, 0.03),
       0 20px 80px rgba(0, 0, 0, 0.4),
       0 0 120px rgba(167, 139, 250, 0.03);
-    backdrop-filter: blur(20px);
     padding: 36px 44px 32px;
     margin: 20px auto;
     height: auto;
@@ -1685,5 +1683,493 @@ body {
   100% {
     transform: translateY(-100vh) scale(0.3);
     opacity: 0;
+  }
+}
+
+/* ==========================================================================
+   Premium dokunuşlar
+   Yapı aynı; derinlik, akıcı geçişler ve daha net geri bildirim.
+   ========================================================================== */
+
+:root {
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --gold: #f5d08a;
+}
+
+/* Arka plan: sabit, hafif ışık halesi + ince yıldız dokusu (animasyonsuz, GPU dostu) */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 45% at 50% -10%, rgba(167, 139, 250, 0.16), transparent 70%),
+    radial-gradient(45% 35% at 85% 110%, rgba(244, 114, 182, 0.08), transparent 70%),
+    radial-gradient(40% 30% at 10% 100%, rgba(96, 165, 250, 0.08), transparent 70%);
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.5;
+  background-image:
+    radial-gradient(1px 1px at 12% 18%, rgba(255, 255, 255, 0.55), transparent 60%),
+    radial-gradient(1px 1px at 78% 12%, rgba(255, 255, 255, 0.45), transparent 60%),
+    radial-gradient(1.5px 1.5px at 64% 32%, rgba(255, 255, 255, 0.35), transparent 60%),
+    radial-gradient(1px 1px at 28% 46%, rgba(255, 255, 255, 0.3), transparent 60%),
+    radial-gradient(1px 1px at 90% 58%, rgba(255, 255, 255, 0.35), transparent 60%),
+    radial-gradient(1.5px 1.5px at 8% 74%, rgba(255, 255, 255, 0.3), transparent 60%),
+    radial-gradient(1px 1px at 46% 88%, rgba(255, 255, 255, 0.25), transparent 60%),
+    radial-gradient(1px 1px at 70% 80%, rgba(255, 255, 255, 0.3), transparent 60%);
+}
+
+/* İlk açılış: içerik yumuşakça yükselir */
+.header,
+.main {
+  animation: riseIn 0.7s var(--ease-out) backwards;
+}
+
+.main {
+  animation-delay: 0.08s;
+}
+
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Klavye odağı */
+:focus-visible {
+  outline: 2px solid rgba(167, 139, 250, 0.7);
+  outline-offset: 3px;
+}
+
+.city-search:focus-visible {
+  outline: none;
+}
+
+.city-search {
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.city-search:focus {
+  border-color: rgba(167, 139, 250, 0.45);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: 0 0 0 4px rgba(167, 139, 250, 0.12);
+}
+
+/* Konum düğmesi: ince kenar ve basma hissi */
+.city-selector-button {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  transition: background 0.25s ease, box-shadow 0.25s ease, transform 0.2s var(--ease-out);
+}
+
+.city-selector-button:hover {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+
+.city-selector-button:hover .city-icon {
+  opacity: 1;
+  transform: rotate(-8deg);
+}
+
+.city-icon {
+  transition: opacity 0.25s ease, transform 0.35s var(--ease-out);
+}
+
+/* Saat */
+.current-time .time-seconds {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Geri sayım: sabit genişlikli rakamlar (titreme yok) + değişen sayı yerine oturur */
+.countdown-time {
+  font-variant-numeric: tabular-nums;
+}
+
+.countdown-time .time-number {
+  display: inline-block;
+  animation: numIn 0.45s var(--ease-out) both;
+}
+
+@keyframes numIn {
+  from {
+    opacity: 0.35;
+    transform: translateY(-0.12em);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+
+.countdown-time .time-number.time-seconds {
+  animation-name: numInSoft;
+}
+
+@keyframes numInSoft {
+  from {
+    opacity: 0.25;
+    transform: translateY(-0.18em);
+  }
+  to {
+    opacity: 0.65;
+    transform: none;
+  }
+}
+
+.countdown-label {
+  animation: labelIn 0.5s var(--ease-out) both;
+}
+
+@keyframes labelIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Son dakikada sayaç hafifçe nefes alır */
+.countdown.is-final .countdown-time {
+  animation: finalPulse 1s ease-in-out infinite;
+}
+
+@keyframes finalPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.75; }
+}
+
+/* Vakte ilerleme çubuğu */
+.countdown-progress {
+  position: relative;
+  display: block;
+  width: min(240px, 60%);
+  height: 3px;
+  margin: 22px auto 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.countdown-progress-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--gradient-text);
+  transform-origin: left center;
+  transition: transform 1s linear;
+  box-shadow: 0 0 12px rgba(244, 114, 182, 0.5);
+}
+
+/* Görünüm seçici: kayan gösterge */
+.view-toggle {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+.toggle-indicator {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 4px);
+  border-radius: 50px;
+  background: var(--button-bg-hover);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: transform 0.45s var(--ease-out);
+}
+
+.view-toggle.is-all .toggle-indicator {
+  transform: translateX(100%);
+}
+
+.toggle-btn {
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+  transition: color 0.3s ease;
+}
+
+.toggle-btn.active {
+  background: transparent;
+}
+
+.toggle-btn:active {
+  transform: scale(0.97);
+}
+
+/* Vakit listesi */
+.prayer-item {
+  transition: background 0.3s ease, border-color 0.3s ease, opacity 0.3s ease;
+}
+
+.prayer-item.active {
+  position: relative;
+  background:
+    linear-gradient(135deg, rgba(167, 139, 250, 0.1), rgba(244, 114, 182, 0.05) 60%, rgba(96, 165, 250, 0.06));
+  border-color: rgba(167, 139, 250, 0.28);
+  box-shadow:
+    0 8px 30px rgba(10, 10, 30, 0.35),
+    0 0 40px rgba(167, 139, 250, 0.08);
+}
+
+.prayer-item.past {
+  opacity: 0.45;
+}
+
+.prayer-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.prayer-dot {
+  position: relative;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-pink);
+  flex-shrink: 0;
+}
+
+.prayer-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: inherit;
+  animation: dotPing 2s var(--ease-out) infinite;
+}
+
+@keyframes dotPing {
+  from {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  to {
+    transform: scale(3);
+    opacity: 0;
+  }
+}
+
+/* Ramazan rozeti */
+.ramazan-badge {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.ramazan-badge.ramazan-active {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ramazan-active-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ramazan-progress {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: 260px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.ramazan-progress-fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--gradient-text);
+  transform-origin: left center;
+  transition: transform 0.8s var(--ease-out);
+}
+
+/* Yükleme iskeleti: sayfanın şeklini önceden çizer */
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  padding: 20px 0;
+}
+
+.skeleton-line {
+  display: block;
+  border-radius: 14px;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0.04) 30%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.04) 70%
+  );
+  background-size: 300% 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-label {
+  width: 120px;
+  height: 18px;
+}
+
+.skeleton-countdown {
+  width: 78%;
+  height: 64px;
+  margin-bottom: 30px;
+  border-radius: 20px;
+}
+
+.skeleton-toggle {
+  width: 220px;
+  height: 42px;
+  border-radius: 50px;
+}
+
+.skeleton-row {
+  width: 100%;
+  height: 58px;
+  border-radius: 16px;
+}
+
+@keyframes shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0 0; }
+}
+
+/* Hata durumu */
+.error-state p {
+  color: var(--text-secondary);
+}
+
+.error-state button:active {
+  transform: scale(0.97);
+}
+
+/* Konum seçici: açılış geçişleri */
+.city-overlay {
+  animation: overlayIn 0.3s ease both;
+}
+
+@keyframes overlayIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.city-dropdown {
+  animation: sheetIn 0.45s var(--ease-out) backwards;
+  box-shadow:
+    0 -10px 60px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+@keyframes sheetIn {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+.city-list {
+  animation: listIn 0.35s var(--ease-out) backwards;
+}
+
+@keyframes listIn {
+  from { opacity: 0; transform: translateX(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+.city-item {
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.city-item:active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.city-item:focus-visible {
+  outline-offset: -2px;
+}
+
+.city-check {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--accent);
+  opacity: 0;
+  transform: scale(0.6);
+  transition: opacity 0.2s ease, transform 0.3s var(--ease-out);
+}
+
+.city-item.active .city-check {
+  opacity: 1;
+  transform: none;
+}
+
+.close-btn:hover svg {
+  transform: rotate(90deg);
+}
+
+.close-btn svg {
+  transition: transform 0.35s var(--ease-out);
+}
+
+/* Masaüstü kart: cam kenar parıltısı */
+@media (min-width: 768px) {
+  @keyframes sheetIn {
+    from { transform: translate(-50%, -48%) scale(0.97); opacity: 0; }
+    to { transform: translate(-50%, -50%); opacity: 1; }
+  }
+}
+
+@media (min-width: 1024px) {
+  .app {
+    position: relative;
+  }
+
+  .app::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(160deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 35%, rgba(167, 139, 250, 0.12) 100%);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* Hareket azaltma tercihi */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }

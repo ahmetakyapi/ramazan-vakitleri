@@ -2,37 +2,62 @@ import { useState, useEffect } from 'react';
 import {
   getNextMainPrayer,
   getNextPrayer,
+  getPreviousPrayerDate,
+  getProgress,
   getTimeDifference,
 } from '../utils/timeUtils';
+
+const NAME_MAP = {
+  Imsak: 'İmsak',
+  Gunes: 'Güneş',
+  Ogle: 'Öğle',
+  Ikindi: 'İkindi',
+  Aksam: 'Akşam',
+  Yatsi: 'Yatsı',
+};
+
+// Değeri değişen sayı yeniden mount edilir ve yumuşakça yerine oturur
+const Num = ({ value, className = '' }) => (
+  <span key={value} className={`time-number ${className}`}>
+    {value}
+  </span>
+);
 
 const Countdown = ({ times, nextTimes, showAllTimes }) => {
   const [countdown, setCountdown] = useState(null);
   const [nextPrayer, setNextPrayer] = useState(null);
+  const [progress, setProgress] = useState(0);
 
   useEffect(() => {
-    if (!times) return;
+    if (!times) return undefined;
+
+    let timeout;
 
     const updateCountdown = () => {
-      let next;
-
-      if (showAllTimes) {
-        next = getNextPrayer(times, nextTimes);
-      } else {
-        next = getNextMainPrayer(times, nextTimes);
-      }
+      const now = new Date();
+      const next = showAllTimes
+        ? getNextPrayer(times, nextTimes, now)
+        : getNextMainPrayer(times, nextTimes, now);
 
       setNextPrayer(next);
 
       if (next) {
-        const diff = getTimeDifference(next.date, new Date());
-        setCountdown(diff);
+        setCountdown(getTimeDifference(next.date, now));
+        setProgress(
+          getProgress(getPreviousPrayerDate(next, times, showAllTimes), next.date, now)
+        );
       }
     };
 
-    updateCountdown();
-    const interval = setInterval(updateCountdown, 1000);
+    // Saniye sınırına hizalı güncelleme: sayaç saatle aynı anda değişir
+    const tick = () => {
+      updateCountdown();
+      timeout = setTimeout(tick, 1000 - (Date.now() % 1000) + 5);
+    };
 
-    return () => clearInterval(interval);
+    tick();
+
+    return () => clearTimeout(timeout);
   }, [times, nextTimes, showAllTimes]);
 
   if (!nextPrayer || !countdown) {
@@ -45,35 +70,24 @@ const Countdown = ({ times, nextTimes, showAllTimes }) => {
 
   const getTitle = () => {
     if (showAllTimes) {
-      const nameMap = {
-        'Imsak': 'İmsak',
-        'Gunes': 'Güneş',
-        'Ogle': 'Öğle',
-        'Ikindi': 'İkindi',
-        'Aksam': 'Akşam',
-        'Yatsi': 'Yatsı'
-      };
-      const displayName = nameMap[nextPrayer.key] || nextPrayer.name;
-      return `${displayName} Vaktine`;
-    } else {
-      if (nextPrayer.isIftar) {
-        return 'İftar Vaktine';
-      }
-      return 'İmsak Vaktine';
+      return `${NAME_MAP[nextPrayer.key] || nextPrayer.name} Vaktine`;
     }
+    return nextPrayer.isIftar ? 'İftar Vaktine' : 'İmsak Vaktine';
   };
 
   const formatTime = () => {
     const { hours, minutes, seconds } = countdown;
+    const mm = minutes.toString().padStart(2, '0');
+    const ss = seconds.toString().padStart(2, '0');
 
     if (hours > 0) {
       return (
         <>
-          <span className="time-number">{hours}</span>
+          <Num value={hours} />
           <span className="time-unit">sa </span>
-          <span className="time-number">{minutes.toString().padStart(2, '0')}</span>
+          <Num value={mm} />
           <span className="time-unit">dk </span>
-          <span className="time-number time-seconds">{seconds.toString().padStart(2, '0')}</span>
+          <Num value={ss} className="time-seconds" />
           <span className="time-unit time-seconds">sn</span>
         </>
       );
@@ -82,9 +96,9 @@ const Countdown = ({ times, nextTimes, showAllTimes }) => {
     if (minutes > 0) {
       return (
         <>
-          <span className="time-number">{minutes}</span>
+          <Num value={minutes} />
           <span className="time-unit">dk </span>
-          <span className="time-number time-seconds">{seconds.toString().padStart(2, '0')}</span>
+          <Num value={ss} className="time-seconds" />
           <span className="time-unit time-seconds">sn</span>
         </>
       );
@@ -92,17 +106,37 @@ const Countdown = ({ times, nextTimes, showAllTimes }) => {
 
     return (
       <>
-        <span className="time-number">{seconds}</span>
+        <Num value={seconds} />
         <span className="time-unit">sn</span>
       </>
     );
   };
 
+  const title = getTitle();
+  const isFinalMinute = countdown.hours === 0 && countdown.minutes === 0;
+
   return (
-    <div className="countdown" role="timer" aria-label={`${getTitle()} geri sayım`}>
-      <div className="countdown-label">{getTitle()}</div>
-      <div className="countdown-time" aria-live="polite" aria-atomic="true">
+    <div
+      className={`countdown ${isFinalMinute ? 'is-final' : ''}`}
+      role="timer"
+      aria-label={`${title} geri sayım`}
+    >
+      <div className="countdown-label" key={title}>{title}</div>
+      <div className="countdown-time" aria-live="off">
         {formatTime()}
+      </div>
+      <div
+        className="countdown-progress"
+        role="progressbar"
+        aria-label={`${title} kalan sürenin ilerlemesi`}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(progress * 100)}
+      >
+        <span
+          className="countdown-progress-fill"
+          style={{ transform: `scaleX(${progress})` }}
+        />
       </div>
     </div>
   );
