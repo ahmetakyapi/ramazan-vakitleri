@@ -7,22 +7,42 @@ const API_BASE = 'https://ezanvakti.emushaf.net';
 const TURKEY_CODE = '2';
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [2000, 5000, 10000];
+// Servis yarım saniyede yanıt veriyor. Çekmeyen bağlantıda (sahurda zayıf
+// şebeke) fetch dakikalarca asılı kalabiliyordu; deneme başına üst sınır.
+const ATTEMPT_TIMEOUT = 12000;
 
 // Çevrimdışıyken 17 sn'lik yeniden deneme zinciri boşa bekletir
 const isOffline = () =>
   typeof navigator !== 'undefined' && navigator.onLine === false;
+
+const fetchJson = async (url, signal) => {
+  const controller = new AbortController();
+  const abort = () => controller.abort();
+  if (signal?.aborted) abort();
+  signal?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(abort, ATTEMPT_TIMEOUT);
+
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return await res.json();
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', abort);
+  }
+};
 
 export const fetchWithRetry = async (url, signal, retries = MAX_RETRIES) => {
   if (isOffline()) retries = 0;
 
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      const res = await fetch(url, { signal });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return await res.json();
+      return await fetchJson(url, signal);
     } catch (err) {
-      if (err.name === 'AbortError') throw err;
-      if (attempt === retries) throw err;
+      // Yalnız çağıranın iptali sessiz geçer; zaman aşımı sıradan hatadır
+      if (signal?.aborted) throw err;
+      const failure = err.name === 'AbortError' ? new Error('Zaman aşımı') : err;
+      if (attempt === retries) throw failure;
       await new Promise((r) => setTimeout(r, RETRY_DELAYS[attempt]));
     }
   }
@@ -132,7 +152,8 @@ const hasRows = (data) => Array.isArray(data) && data.length > 0;
 
 /**
  * Seçilen ilçenin namaz vakitlerini çeken hook
- * - Cache destekli; bağlantı yoksa süresi geçmiş kayıttan bugünü gösterir
+ * - Cache destekli; süresi geçmiş kayıt bugünü içeriyorsa hemen gösterilir,
+ *   tazeleme arkada yapılır, bağlantı yoksa kayıt notla ekranda kalır
  * - Retry mekanizmalı
  * - Gece yarısı geçişinde otomatik yeniden fetch
  */
@@ -158,8 +179,6 @@ const usePrayerTimes = (districtId) => {
     async (signal, { silent = false } = {}) => {
       if (!districtId) return;
 
-      // Sessiz tazelemede ekrandaki vakitler iskelete dönmez
-      if (!silent) setLoading(true);
       setError(null);
 
       // Önce cache'e bak
@@ -172,6 +191,21 @@ const usePrayerTimes = (districtId) => {
         return;
       }
 
+      // Süresi geçmiş ama bugünü içeren kayıt hemen gösterilir: bir günün
+      // vakitleri sonradan değişmez. Zayıf bağlantıda iskelette yeniden deneme
+      // zincirini beklemek yerine tazeleme arkada yapılır.
+      const stored = getCache('times', districtId, { allowStale: true });
+      const hasStoredToday =
+        hasRows(stored) && Boolean(getVisiblePrayerTimes(stored).current);
+
+      if (hasStoredToday) {
+        applyRows(stored);
+        setLoading(false);
+      } else if (!silent) {
+        // Sessiz tazelemede ekrandaki vakitler iskelete dönmez
+        setLoading(true);
+      }
+
       try {
         const data = await fetchWithRetry(
           `${API_BASE}/vakitler/${districtId}`,
@@ -179,16 +213,18 @@ const usePrayerTimes = (districtId) => {
         );
         if (signal.aborted) return;
 
-        applyRows(Array.isArray(data) ? data : []);
+        const rows = Array.isArray(data) ? data : [];
+        // Yanıt bugünü içermiyorsa ekrandaki kayıtlı vakitler silinmez
+        if (hasStoredToday && !getVisiblePrayerTimes(rows).current) return;
+
+        applyRows(rows);
         setStale(false);
         setCache('times', districtId, data);
         lastFetchDateRef.current = new Date().toDateString();
       } catch (err) {
-        if (err.name === 'AbortError') return;
-        // Bağlantı yoksa: süresi geçmiş kayıt bugünü içeriyorsa onu göster
-        const fallback = getCache('times', districtId, { allowStale: true });
-        if (hasRows(fallback) && getVisiblePrayerTimes(fallback).current) {
-          applyRows(fallback);
+        if (signal.aborted) return;
+        // Bağlantı yoksa: kayıtlı vakitler ekranda kalır, notla birlikte
+        if (hasStoredToday) {
           setStale(true);
         } else {
           setError(err.message);

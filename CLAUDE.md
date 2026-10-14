@@ -26,6 +26,8 @@ yardımcılar `src/utils/*` için `test/*.test.js`).
   26 Ramazan akşamı. Tek kaynak `src/utils/ramazan.js`.
 - **Bugün listede yoksa vakit gösterilmez** (`getVisiblePrayerTimes` null
   döner, yeniden çekilir); başka günün vakti bugünkü gibi görünmesin.
+  Süresi geçmiş kayıt bugünü içeriyorsa hemen gösterilir, tazeleme arkada
+  yapılır (bir günün vakti değişmez; zayıf şebekede iskelet beklenmesin).
 - **Yerleşim kaydırılabilir**: `.app`'e sabit yükseklik ya da
   `overflow: hidden` verme; masaüstü kart `margin: auto` ile ortalanır
   (flex ortalaması taşınca kartın üstünü ekran dışına itiyordu).
