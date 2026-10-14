@@ -18,10 +18,13 @@
 |---------|----------|
 | Namaz Vakitleri | Türkiye'nin tüm il ve ilçeleri için resmi vakitler |
 | Geri Sayım | İftar ve sahur için canlı geri sayım |
-| Görünüm Seçimi | İmsak & İftar veya tüm vakitler |
-| Konum Hafızası | Seçilen il/ilçe otomatik kaydedilir |
-| Ramazan Takibi | Kaçıncı gün olduğunu gösterir |
-| Kadir Gecesi | Özel gece bildirimi |
+| Görünüm Seçimi | İmsak & İftar veya tüm vakitler; gün bitince liste yarına geçer |
+| Bugünün Tarihi | Miladi ve Diyanet'in hicri tarihi |
+| Konum | İsteğe bağlı "Konumumu Kullan"; seçilen il/ilçe kaydedilir |
+| Ramazan Takibi | Kaçıncı gün olduğunu Diyanet takvimine göre gösterir |
+| Kadir Gecesi | 26 Ramazan akşamı özel gece notu |
+| Hatırlatıcı | Sayfa açıkken imsak ve iftardan 15 dakika önce bildirim |
+| Çevrimdışı | Bağlantı yokken kayıtlı vakitler |
 | Responsive | Tüm cihazlarda uyumlu tasarım |
 
 <br>
@@ -39,6 +42,9 @@ npm run dev
 
 # Prodüksiyon için derle
 npm run build
+
+# Testler (saf yardımcılar, node:test)
+npm test
 ```
 
 <br>
