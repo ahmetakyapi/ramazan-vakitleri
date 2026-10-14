@@ -1,22 +1,35 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import { useCities, useDistricts } from '../hooks/usePrayerTimes';
 import { isVirtualIstanbulDistrict } from '../utils/istanbulDistricts';
-import useGeolocation from '../hooks/useGeolocation';
+import { foldForSearch, formatPlaceName } from '../utils/text';
+import useGeolocation, { isGeolocationSupported } from '../hooks/useGeolocation';
 
 const DESKTOP_MEDIA_QUERY = '(min-width: 768px)';
-const FOCUSABLE_SELECTOR = 'button, input, [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE_SELECTOR = 'button:not([disabled]), input, [tabindex]:not([tabindex="-1"])';
+const OPTION_SELECTOR = '[role="option"]';
+const TOP_CITIES = ['İSTANBUL', 'ANKARA', 'İZMİR'];
 
-const SettingsIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <line x1="4" y1="21" x2="4" y2="14"></line>
-    <line x1="4" y1="10" x2="4" y2="3"></line>
-    <line x1="12" y1="21" x2="12" y2="12"></line>
-    <line x1="12" y1="8" x2="12" y2="3"></line>
-    <line x1="20" y1="21" x2="20" y2="16"></line>
-    <line x1="20" y1="12" x2="20" y2="3"></line>
-    <line x1="1" y1="14" x2="7" y2="14"></line>
-    <line x1="9" y1="8" x2="15" y2="8"></line>
-    <line x1="17" y1="16" x2="23" y2="16"></line>
+const PinIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z" />
+    <circle cx="12" cy="9.5" r="2.5" />
+  </svg>
+);
+
+const ChevronIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+const LocateIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="7" />
+    <circle cx="12" cy="12" r="2.5" />
+    <line x1="12" y1="2" x2="12" y2="5" />
+    <line x1="12" y1="19" x2="12" y2="22" />
+    <line x1="2" y1="12" x2="5" y2="12" />
+    <line x1="19" y1="12" x2="22" y2="12" />
   </svg>
 );
 
@@ -27,49 +40,86 @@ const CheckIcon = () => (
 );
 
 const CloseIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <line x1="18" y1="6" x2="6" y2="18"></line>
     <line x1="6" y1="6" x2="18" y2="18"></line>
   </svg>
 );
 
-const formatName = (name) => {
-  if (!name) return '';
-  return name
-    .split(' ')
-    .map(word => word.charAt(0) + word.slice(1).toLocaleLowerCase('tr-TR'))
-    .join(' ');
-};
-
 const getVirtualDistrictLabel = (cityName) =>
   cityName
-    ? `İl Merkezi Vakti (${formatName(cityName)})`
+    ? `İl Merkezi Vakti (${formatPlaceName(cityName)})`
     : 'İl Merkezi Vakti';
 
-const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrictChange }) => {
+// İl merkezinin ilçesi: adı il adıyla aynı olan ya da "MERKEZ"
+const findCenterDistrict = (districts, city) => {
+  const cityName = city?.SehirAdi?.toLocaleUpperCase('tr-TR');
+  return districts.find((district) => {
+    const name = district.IlceAdi?.toLocaleUpperCase('tr-TR');
+    return name === cityName || name === 'MERKEZ';
+  });
+};
+
+// Aramada başa uyan önce gelir: "an" → Ankara, Antalya, sonra Adana
+const filterByName = (items, query, getNames) => {
+  const needle = foldForSearch(query);
+  if (!needle) return items;
+
+  return items
+    .map((item, index) => {
+      const names = getNames(item).map(foldForSearch);
+      let rank = -1;
+      if (names.some((name) => name.startsWith(needle))) rank = 0;
+      else if (names.some((name) => name.split(' ').some((word) => word.startsWith(needle)))) rank = 1;
+      else if (names.some((name) => name.includes(needle))) rank = 2;
+      return { item, index, rank };
+    })
+    .filter((entry) => entry.rank !== -1)
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((entry) => entry.item);
+};
+
+const CitySelector = ({ selectedCity, selectedDistrict, onLocationChange }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [step, setStep] = useState('city'); // 'city' veya 'district'
+  // Seçicide gezilen il. İlçe seçilene kadar uygulamadaki konum değişmez:
+  // eskiden il seçilir seçilmez kaydediliyordu ve pencere ilçe seçmeden
+  // kapanınca ekranda vakit yerine "Lütfen bir ilçe seçin" kalıyordu.
+  const [browseCity, setBrowseCity] = useState(selectedCity);
   const searchRef = useRef(null);
   const triggerRef = useRef(null);
   const dropdownRef = useRef(null);
+  const listRef = useRef(null);
+  const titleId = useId();
 
+  const listCity = isOpen ? browseCity : selectedCity;
   const { cities, loading: citiesLoading } = useCities();
-  const { districts, loading: districtsLoading } = useDistricts(selectedCity?.SehirID);
-  const { suggest: suggestCity } = useGeolocation(cities);
+  const { districts, loading: districtsLoading } = useDistricts(listCity?.SehirID);
+  const geo = useGeolocation(cities);
+  const geoSupported = isGeolocationSupported();
 
-  // onCityChange ref — effect dependency'den çıkarmak için
-  const onCityChangeRef = useRef(onCityChange);
-  onCityChangeRef.current = onCityChange;
-
-  // İlk yüklemede konum öner
+  // Konum bulununca o ilin ilçe listesine geç; ilçeyi kullanıcı seçer
+  // (konum yalnızca en yakın il merkezini söyleyebiliyor)
+  const [locatedCityId, setLocatedCityId] = useState(null);
+  const { city: locatedCity, reset: resetGeo } = geo;
   useEffect(() => {
-    if (cities.length > 0) {
-      suggestCity((city) => {
-        onCityChangeRef.current(city);
-      });
-    }
-  }, [cities, suggestCity]);
+    if (!locatedCity) return;
+    setBrowseCity(locatedCity);
+    setLocatedCityId(locatedCity.SehirID);
+    setStep('district');
+    setSearch('');
+    resetGeo();
+  }, [locatedCity, resetGeo]);
+
+  // İli olup ilçesi olmayan eski kayıtlar için il merkezini seç
+  const onLocationChangeRef = useRef(onLocationChange);
+  onLocationChangeRef.current = onLocationChange;
+  useEffect(() => {
+    if (isOpen || !selectedCity || selectedDistrict || districtsLoading) return;
+    const center = findCenterDistrict(districts, selectedCity);
+    if (center) onLocationChangeRef.current(selectedCity, center);
+  }, [isOpen, selectedCity, selectedDistrict, districts, districtsLoading]);
 
   useEffect(() => {
     if (!isOpen || !searchRef.current) return;
@@ -79,6 +129,7 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
         ? window.matchMedia(DESKTOP_MEDIA_QUERY).matches
         : true;
 
+    // Telefonda klavye listenin yarısını kapatmasın diye odak verilmez
     if (isDesktop) {
       searchRef.current.focus();
     }
@@ -133,58 +184,45 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
-  const TOP_CITIES = ['İSTANBUL', 'ANKARA', 'İZMİR'];
+  const sortedCities = search
+    ? cities
+    : [...cities].sort((a, b) => {
+        const aTop = TOP_CITIES.indexOf(a.SehirAdi);
+        const bTop = TOP_CITIES.indexOf(b.SehirAdi);
+        if (aTop !== -1 && bTop !== -1) return aTop - bTop;
+        if (aTop !== -1) return -1;
+        if (bTop !== -1) return 1;
+        return 0;
+      });
 
-  const filteredCities = cities
-    .filter(city =>
-      city.SehirAdi.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) ||
-      city.SehirAdiEn.toLowerCase().includes(search.toLowerCase())
-    )
-    .sort((a, b) => {
-      const aTop = TOP_CITIES.indexOf(a.SehirAdi);
-      const bTop = TOP_CITIES.indexOf(b.SehirAdi);
-      if (aTop !== -1 && bTop !== -1) return aTop - bTop;
-      if (aTop !== -1) return -1;
-      if (bTop !== -1) return 1;
-      return 0;
-    });
+  const filteredCities = filterByName(sortedCities, search, (city) => [
+    city.SehirAdi,
+    city.SehirAdiEn,
+  ]);
 
-  const filteredDistricts = districts.filter(district =>
-    district.IlceAdi.toLocaleLowerCase('tr-TR').includes(search.toLocaleLowerCase('tr-TR')) ||
-    district.IlceAdiEn.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredDistricts = filterByName(districts, search, (district) => [
+    district.IlceAdi,
+    district.IlceAdiEn,
+  ]);
 
-  const sharedDistrictOption = districts.find((district) => {
-    const districtName = district.IlceAdi?.toLocaleUpperCase('tr-TR');
-    const cityName = selectedCity?.SehirAdi?.toLocaleUpperCase('tr-TR');
-
-    return districtName === cityName || districtName === 'MERKEZ';
-  });
-
-  const shouldShowDistrictNote = step === 'district' && Boolean(sharedDistrictOption);
+  const centerDistrict = findCenterDistrict(districts, browseCity);
+  const showDistrictNote =
+    step === 'district' && !districtsLoading && filteredDistricts.length === 0;
 
   const handleOpen = () => {
     setIsOpen(true);
     setSearch('');
+    setBrowseCity(selectedCity);
+    setLocatedCityId(null);
+    resetGeo();
     setStep(selectedCity ? 'district' : 'city');
   };
 
   const handleCitySelect = (city) => {
-    onCityChange(city);
+    setBrowseCity(city);
+    setLocatedCityId(null);
     setSearch('');
     setStep('district');
-  };
-
-  const handleDistrictSelect = (district) => {
-    onDistrictChange(district);
-    setIsOpen(false);
-    setSearch('');
-    triggerRef.current?.focus();
-  };
-
-  const handleBack = () => {
-    setStep('city');
-    setSearch('');
   };
 
   const handleClose = () => {
@@ -193,11 +231,80 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
     triggerRef.current?.focus();
   };
 
-  const displayName = selectedDistrict
-    ? `${formatName(selectedCity?.SehirAdi)} / ${formatName(selectedDistrict?.IlceAdi)}`
-    : selectedCity
-      ? formatName(selectedCity.SehirAdi)
-      : 'Konum Seç';
+  const handleDistrictSelect = (district) => {
+    onLocationChange(browseCity, district);
+    handleClose();
+  };
+
+  const handleBack = () => {
+    setStep('city');
+    setSearch('');
+  };
+
+  const focusOption = (index) => {
+    const options = listRef.current?.querySelectorAll(OPTION_SELECTOR);
+    if (!options?.length) return;
+    const clamped = Math.max(0, Math.min(options.length - 1, index));
+    options[clamped].focus();
+  };
+
+  // Enter ilk sonucu seçer, aşağı ok listeye iner
+  const handleSearchKeyDown = (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      if (step === 'city' && filteredCities[0]) handleCitySelect(filteredCities[0]);
+      if (step === 'district' && filteredDistricts[0]) handleDistrictSelect(filteredDistricts[0]);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusOption(0);
+    }
+  };
+
+  const handleListKeyDown = (event) => {
+    const options = [...(listRef.current?.querySelectorAll(OPTION_SELECTOR) || [])];
+    const index = options.indexOf(document.activeElement);
+    if (index === -1) return;
+
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      focusOption(index + 1);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      if (index === 0) searchRef.current?.focus();
+      else focusOption(index - 1);
+    } else if (event.key === 'Home') {
+      event.preventDefault();
+      focusOption(0);
+    } else if (event.key === 'End') {
+      event.preventDefault();
+      focusOption(options.length - 1);
+    }
+  };
+
+  const optionKeyDown = (onSelect) => (event) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onSelect();
+    }
+  };
+
+  const cityName = formatPlaceName(selectedCity?.SehirAdi);
+  const districtName = formatPlaceName(selectedDistrict?.IlceAdi);
+  const displayName = !selectedCity
+    ? 'Konum Seç'
+    : !selectedDistrict || districtName === cityName
+      ? cityName
+      : `${districtName}, ${cityName}`;
+
+  // İlçe adedi yazılmaz: liste il merkezinin vakit bölgesini de bir satır
+  // sayıyor, "40 ilçe" gerçek ilçe sayısını yanlış söylerdi
+  const browseCityName = formatPlaceName(browseCity?.SehirAdi);
+  const subtitle =
+    step === 'city'
+      ? citiesLoading ? 'İller yükleniyor' : `${cities.length} il`
+      : locatedCityId === browseCity?.SehirID
+        ? `${browseCityName}, konumunuza en yakın il`
+        : browseCityName;
 
   return (
     <div className="city-selector">
@@ -208,34 +315,34 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
         onClick={handleOpen}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
+        aria-label={`Konumu değiştir, şu an ${displayName}`}
       >
         <span className="city-icon">
-          <SettingsIcon />
+          <PinIcon />
         </span>
         <span className="city-name">{displayName}</span>
+        <span className="city-chevron">
+          <ChevronIcon />
+        </span>
       </button>
 
       {isOpen && (
-        <div className="city-dropdown" ref={dropdownRef} role="dialog" aria-label="Konum seçici" aria-modal="true">
+        <div className="city-dropdown" ref={dropdownRef} role="dialog" aria-labelledby={titleId} aria-modal="true">
           <div className="city-sheet-handle" aria-hidden="true" />
           <div className="dropdown-header">
             <div className="dropdown-header-main">
               {step === 'district' && (
                 <button type="button" className="back-btn" onClick={handleBack} aria-label="Şehir listesine dön">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="18" height="18" aria-hidden="true">
                     <polyline points="15 18 9 12 15 6"></polyline>
                   </svg>
                 </button>
               )}
               <div className="dropdown-heading">
-                <span className="dropdown-title">
-                  {step === 'city' ? 'Şehir Seçin' : formatName(selectedCity?.SehirAdi) + ' - İlçe Seçin'}
-                </span>
-                <span className="dropdown-subtitle">
-                  {step === 'city'
-                    ? 'Şehir arayın ve tek dokunuşla seçin'
-                    : 'Daha rahat arama için listede aşağı kaydırabilirsiniz'}
-                </span>
+                <h2 className="dropdown-title" id={titleId}>
+                  {step === 'city' ? 'Şehir Seçin' : 'İlçe Seçin'}
+                </h2>
+                <p className="dropdown-subtitle">{subtitle}</p>
               </div>
             </div>
             <button type="button" className="close-btn" onClick={handleClose} aria-label="Konum seçiciyi kapat">
@@ -245,25 +352,69 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
           <div className="dropdown-search-wrap">
             <input
               ref={searchRef}
-              type="text"
+              type="search"
               className="city-search"
-              placeholder={step === 'city' ? 'Şehir ara...' : 'İlçe ara...'}
+              placeholder={step === 'city' ? 'Şehir ara' : 'İlçe ara'}
+              aria-label={step === 'city' ? 'Şehir ara' : 'İlçe ara'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={handleSearchKeyDown}
+              autoComplete="off"
+              enterKeyHint="go"
             />
           </div>
-          {shouldShowDistrictNote && (
-            <div className="selector-note">
-              <strong>Bazı ilçeler ayrı vakit bölgesi olarak listelenmez.</strong>
-              <span>
-                Aradığınız ilçe yoksa {formatName(sharedDistrictOption?.IlceAdi)} seçimini kullanın.
-              </span>
+          {step === 'city' && geoSupported && (
+            <div className="locate-wrap">
+              <button
+                type="button"
+                className="locate-btn"
+                onClick={geo.locate}
+                disabled={geo.status === 'locating' || citiesLoading}
+                aria-busy={geo.status === 'locating'}
+              >
+                <LocateIcon />
+                {geo.status === 'locating' ? 'Konum Bulunuyor' : 'Konumumu Kullan'}
+              </button>
+              {geo.status === 'error' && (
+                <p className="locate-error" role="status">
+                  Konumunuz alınamadı. Şehrinizi listeden seçebilirsiniz.
+                </p>
+              )}
             </div>
           )}
-          <ul className="city-list" key={step} role="listbox" aria-label={step === 'city' ? 'Şehirler' : 'İlçeler'}>
+          {showDistrictNote && (
+            // Bazı ilçeler ayrı vakit bölgesi değil: arayan boşa düşmesin,
+            // il merkezinin vaktine tek dokunuşla geçebilsin
+            <div className="selector-note" role="status">
+              <strong>Aradığınız ilçe listede yok.</strong>
+              <span>
+                Bazı ilçeler ayrı vakit bölgesi olarak listelenmez.
+                {centerDistrict
+                  ? ` Bu durumda ${formatPlaceName(centerDistrict.IlceAdi)} vaktini kullanabilirsiniz.`
+                  : ' Listeden size en yakın ilçeyi seçin.'}
+              </span>
+              {centerDistrict && (
+                <button
+                  type="button"
+                  className="selector-note-action"
+                  onClick={() => handleDistrictSelect(centerDistrict)}
+                >
+                  {formatPlaceName(centerDistrict.IlceAdi)} Vaktini Kullan
+                </button>
+              )}
+            </div>
+          )}
+          <ul
+            className="city-list"
+            key={step}
+            ref={listRef}
+            role="listbox"
+            aria-label={step === 'city' ? 'Şehirler' : 'İlçeler'}
+            onKeyDown={handleListKeyDown}
+          >
             {step === 'city' && (
               citiesLoading ? (
-                <li className="city-item loading-item">Yükleniyor...</li>
+                <li className="city-item loading-item">Yükleniyor</li>
               ) : (
                 filteredCities.length > 0 ? (
                   filteredCities.map((city) => (
@@ -271,25 +422,25 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
                       key={city.SehirID}
                       className={`city-item ${selectedCity?.SehirID === city.SehirID ? 'active' : ''}`}
                       onClick={() => handleCitySelect(city)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleCitySelect(city)}
+                      onKeyDown={optionKeyDown(() => handleCitySelect(city))}
                       role="option"
                       aria-selected={selectedCity?.SehirID === city.SehirID}
                       tabIndex={0}
                     >
                       <span className="city-item-content">
-                        <span className="city-item-label">{formatName(city.SehirAdi)}</span>
+                        <span className="city-item-label">{formatPlaceName(city.SehirAdi)}</span>
                       </span>
                       <CheckIcon />
                     </li>
                   ))
                 ) : (
-                  <li className="city-item empty-item">Sonuç bulunamadı</li>
+                  <li className="city-item empty-item">Bu adla bir il bulunamadı</li>
                 )
               )
             )}
             {step === 'district' && (
               districtsLoading ? (
-                <li className="city-item loading-item">Yükleniyor...</li>
+                <li className="city-item loading-item">Yükleniyor</li>
               ) : (
                 filteredDistricts.length > 0 ? (
                   filteredDistricts.map((district) => (
@@ -297,25 +448,23 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
                       key={district.IlceID}
                       className={`city-item ${selectedDistrict?.IlceID === district.IlceID ? 'active' : ''}`}
                       onClick={() => handleDistrictSelect(district)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleDistrictSelect(district)}
+                      onKeyDown={optionKeyDown(() => handleDistrictSelect(district))}
                       role="option"
                       aria-selected={selectedDistrict?.IlceID === district.IlceID}
                       tabIndex={0}
                     >
                       <span className="city-item-content">
-                        <span className="city-item-label">{formatName(district.IlceAdi)}</span>
+                        <span className="city-item-label">{formatPlaceName(district.IlceAdi)}</span>
                         {isVirtualIstanbulDistrict(district) && (
                           <span className="city-item-meta">
-                            {getVirtualDistrictLabel(selectedCity?.SehirAdi)}
+                            {getVirtualDistrictLabel(browseCity?.SehirAdi)}
                           </span>
                         )}
                       </span>
                       <CheckIcon />
                     </li>
                   ))
-                ) : (
-                  <li className="city-item empty-item">Sonuç bulunamadı</li>
-                )
+                ) : null
               )
             )}
           </ul>
@@ -323,7 +472,7 @@ const CitySelector = ({ selectedCity, selectedDistrict, onCityChange, onDistrict
       )}
 
       {isOpen && (
-        <div className="city-overlay" onClick={handleClose} />
+        <div className="city-overlay" onClick={handleClose} aria-hidden="true" />
       )}
     </div>
   );

@@ -115,41 +115,48 @@ const findNearestCity = (lat, lng, cities) => {
   return nearest;
 };
 
-const GEOLOCATED_KEY = 'ramazan-vakitleri-geolocated';
+export const isGeolocationSupported = () =>
+  typeof navigator !== 'undefined' && 'geolocation' in navigator;
 
+/**
+ * "Konumumu Kullan" düğmesi için: en yakın il merkezini bulur.
+ *
+ * Eskiden sayfa açılır açılmaz konum izni isteniyordu; ziyaretçi neden
+ * sorulduğunu bilmeden reddediyordu ve tarayıcılar yüklemede izin istemeyi
+ * kötü pratik sayıyor. Artık yalnızca kullanıcı düğmeye bastığında sorulur.
+ *
+ * @returns {{ locate: () => void, status: 'idle'|'locating'|'error', city: Object|null, reset: () => void }}
+ */
 const useGeolocation = (cities) => {
-  const [suggesting, setSuggesting] = useState(false);
+  const [status, setStatus] = useState('idle');
+  const [city, setCity] = useState(null);
 
-  const suggest = useCallback(
-    (onCityFound) => {
-      if (!('geolocation' in navigator) || !cities.length) return;
+  const locate = useCallback(() => {
+    if (!isGeolocationSupported() || !cities.length) {
+      setStatus('error');
+      return;
+    }
 
-      // Daha önce geolocate edildiyse tekrar sorma
-      if (localStorage.getItem(GEOLOCATED_KEY)) return;
+    setStatus('locating');
+    setCity(null);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        const nearest = findNearestCity(latitude, longitude, cities);
+        setCity(nearest);
+        setStatus(nearest ? 'idle' : 'error');
+      },
+      () => setStatus('error'),
+      { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+    );
+  }, [cities]);
 
-      setSuggesting(true);
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          const city = findNearestCity(latitude, longitude, cities);
-          setSuggesting(false);
+  const reset = useCallback(() => {
+    setStatus('idle');
+    setCity(null);
+  }, []);
 
-          if (city) {
-            localStorage.setItem(GEOLOCATED_KEY, 'true');
-            onCityFound(city);
-          }
-        },
-        () => {
-          setSuggesting(false);
-          localStorage.setItem(GEOLOCATED_KEY, 'true');
-        },
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
-      );
-    },
-    [cities]
-  );
-
-  return { suggest, suggesting };
+  return { locate, status, city, reset };
 };
 
 export default useGeolocation;

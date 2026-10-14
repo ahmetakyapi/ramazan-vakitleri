@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ramazan-vakitleri-v1';
+const CACHE_NAME = 'ramazan-vakitleri-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -64,4 +64,15 @@ self.addEventListener('fetch', (event) => {
       })
     );
   }
+});
+
+// Hatırlatıcı bildirimine dokununca açık sekmeye dön, yoksa uygulamayı aç
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      const client = clients.find((item) => item.url.startsWith(self.location.origin));
+      return client ? client.focus() : self.clients.openWindow('/');
+    })
+  );
 });

@@ -5,8 +5,10 @@ const NOTIFICATION_KEY = 'ramazan-vakitleri-notifications';
 const REMINDER_MINUTES = 15;
 const SENT_KEY = 'ramazan-vakitleri-notif-sent';
 
+const isSupported = () => typeof window !== 'undefined' && 'Notification' in window;
+
 const getPermissionState = () => {
-  if (!('Notification' in window)) return 'unsupported';
+  if (!isSupported()) return 'unsupported';
   return Notification.permission;
 };
 
@@ -37,42 +39,82 @@ const markNotificationSent = (key) => {
   }
 };
 
-const useNotification = (times, nextTimes) => {
+// Android Chrome'da `new Notification()` "Illegal constructor" atar; bildirim
+// yalnızca service worker kaydı üzerinden gösterilebilir. Önce o denenir.
+const showNotification = async (title, options) => {
+  try {
+    const registration = await navigator.serviceWorker?.getRegistration?.();
+    if (registration?.showNotification) {
+      await registration.showNotification(title, options);
+      return;
+    }
+  } catch {
+    // kayıt yoksa ya da reddedildiyse doğrudan dene
+  }
+
+  try {
+    new Notification(title, options);
+  } catch {
+    // bu tarayıcı sayfa içinden bildirim gösteremiyor
+  }
+};
+
+const REMINDERS = [
+  { key: 'Imsak', name: 'İmsak', title: 'İmsaka' },
+  { key: 'Aksam', name: 'İftar', title: 'İftara' },
+];
+
+/**
+ * İmsak ve iftardan 15 dakika önce hatırlatır (sayfa açıkken).
+ * `toggle` sonucu döner: 'enabled' | 'disabled' | 'denied' | 'unsupported';
+ * arayüz bunu kullanıcıya anlatır.
+ */
+const useNotification = (times) => {
   const [enabled, setEnabled] = useState(() => {
-    return localStorage.getItem(NOTIFICATION_KEY) === 'true';
+    try {
+      return localStorage.getItem(NOTIFICATION_KEY) === 'true';
+    } catch {
+      return false;
+    }
   });
   const [permission, setPermission] = useState(getPermissionState);
   const intervalRef = useRef(null);
 
-  const requestPermission = useCallback(async () => {
-    if (!('Notification' in window)) return false;
+  const persist = (value) => {
+    setEnabled(value);
+    try {
+      localStorage.setItem(NOTIFICATION_KEY, String(value));
+    } catch {
+      // ignore
+    }
+  };
 
-    const result = await Notification.requestPermission();
+  const toggle = useCallback(async () => {
+    if (!isSupported()) return 'unsupported';
+
+    if (enabled && permission === 'granted') {
+      persist(false);
+      return 'disabled';
+    }
+
+    let result = Notification.permission;
+    if (result === 'default') {
+      try {
+        result = await Notification.requestPermission();
+      } catch {
+        result = 'denied';
+      }
+    }
     setPermission(result);
 
     if (result === 'granted') {
-      setEnabled(true);
-      localStorage.setItem(NOTIFICATION_KEY, 'true');
-      return true;
-    }
-    return false;
-  }, []);
-
-  const toggle = useCallback(async () => {
-    if (enabled) {
-      setEnabled(false);
-      localStorage.setItem(NOTIFICATION_KEY, 'false');
-      return;
+      persist(true);
+      return 'enabled';
     }
 
-    if (permission === 'granted') {
-      setEnabled(true);
-      localStorage.setItem(NOTIFICATION_KEY, 'true');
-      return;
-    }
-
-    await requestPermission();
-  }, [enabled, permission, requestPermission]);
+    persist(false);
+    return 'denied';
+  }, [enabled, permission]);
 
   useEffect(() => {
     if (!enabled || permission !== 'granted' || !times) {
@@ -88,31 +130,24 @@ const useNotification = (times, nextTimes) => {
       const today = now.toDateString();
       const sent = getSentNotifications();
 
-      const checkPrayer = (name, timeStr, source) => {
+      REMINDERS.forEach(({ key, name, title }) => {
+        const timeStr = times[key];
         if (!timeStr) return;
-        const prayerDate = parseTimeToDate(timeStr, now);
-        // Yarınki vakitler için tarihi düzelt
-        if (source === 'next') {
-          prayerDate.setDate(prayerDate.getDate() + 1);
-        }
-        const diff = prayerDate.getTime() - now.getTime();
-        const minutesLeft = diff / (1000 * 60);
+
+        const minutesLeft = (parseTimeToDate(timeStr, now) - now) / (1000 * 60);
         const notifKey = `${today}-${name}-${timeStr}`;
 
         if (minutesLeft > 0 && minutesLeft <= REMINDER_MINUTES && !sent[notifKey]) {
-          const mins = Math.ceil(minutesLeft);
-          new Notification(`${name} Vaktine ${mins} dakika`, {
-            body: `${name} vakti: ${timeStr}`,
-            icon: '/favicons/android-chrome-192x192.png',
-            tag: notifKey,
-            silent: false,
-          });
           markNotificationSent(notifKey);
+          showNotification(`${title} ${Math.ceil(minutesLeft)} dakika kaldı`, {
+            body: `${name} vakti ${timeStr}`,
+            icon: '/favicons/android-chrome-192x192.png',
+            badge: '/favicons/favicon-48x48.png',
+            tag: notifKey,
+            lang: 'tr',
+          });
         }
-      };
-
-      checkPrayer('İmsak', times.Imsak, 'today');
-      checkPrayer('İftar', times.Aksam, 'today');
+      });
     };
 
     checkAndNotify();
@@ -124,12 +159,13 @@ const useNotification = (times, nextTimes) => {
         intervalRef.current = null;
       }
     };
-  }, [enabled, permission, times, nextTimes]);
+  }, [enabled, permission, times]);
 
   return {
-    enabled,
+    // İzin sonradan tarayıcıdan geri alındıysa açık görünmesin
+    enabled: enabled && permission === 'granted',
     permission,
-    supported: 'Notification' in window,
+    supported: isSupported(),
     toggle,
   };
 };

@@ -1,35 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { augmentDistricts } from '../utils/istanbulDistricts';
 import { getCache, setCache } from '../utils/apiCache';
+import { getVisiblePrayerTimes } from '../utils/prayerData';
 
 const API_BASE = 'https://ezanvakti.emushaf.net';
 const TURKEY_CODE = '2';
 const MAX_RETRIES = 3;
 const RETRY_DELAYS = [2000, 5000, 10000];
 
-const formatApiDate = (date) =>
-  `${date.getDate().toString().padStart(2, '0')}.${(date.getMonth() + 1)
-    .toString()
-    .padStart(2, '0')}.${date.getFullYear()}`;
+// Çevrimdışıyken 17 sn'lik yeniden deneme zinciri boşa bekletir
+const isOffline = () =>
+  typeof navigator !== 'undefined' && navigator.onLine === false;
 
-const getVisiblePrayerTimes = (data, currentDate = new Date()) => {
-  if (!Array.isArray(data) || data.length === 0) {
-    return { current: null, next: null };
-  }
+export const fetchWithRetry = async (url, signal, retries = MAX_RETRIES) => {
+  if (isOffline()) retries = 0;
 
-  const currentIndex = data.findIndex(
-    (item) => item.MiladiTarihKisa === formatApiDate(currentDate)
-  );
-
-  const safeIndex = currentIndex >= 0 ? currentIndex : 0;
-
-  return {
-    current: data[safeIndex] || null,
-    next: data[safeIndex + 1] || null,
-  };
-};
-
-const fetchWithRetry = async (url, signal, retries = MAX_RETRIES) => {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const res = await fetch(url, { signal });
@@ -90,19 +75,20 @@ export const useCities = () => {
  * Seçilen şehrin ilçelerini çeken hook (cache destekli)
  */
 export const useDistricts = (cityId) => {
-  const [districts, setDistricts] = useState([]);
+  // Liste hangi ile ait: il değişince bir an eski ilin ilçeleri görünmesin
+  const [state, setState] = useState({ cityId: null, districts: [] });
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!cityId) {
-      setDistricts([]);
+      setState({ cityId: null, districts: [] });
       setLoading(false);
       return;
     }
 
     const cached = getCache('districts', cityId);
     if (cached && cached.length > 0) {
-      setDistricts(cached);
+      setState({ cityId, districts: cached });
       setLoading(false);
       return;
     }
@@ -118,11 +104,11 @@ export const useDistricts = (cityId) => {
         );
         if (controller.signal.aborted) return;
         const augmented = augmentDistricts(cityId, data);
-        setDistricts(augmented);
+        setState({ cityId, districts: augmented });
         setCache('districts', cityId, augmented);
       } catch (error) {
         if (error.name === 'AbortError') return;
-        setDistricts([]);
+        setState({ cityId, districts: [] });
       } finally {
         if (controller.signal.aborted) return;
         setLoading(false);
@@ -134,12 +120,19 @@ export const useDistricts = (cityId) => {
     return () => controller.abort();
   }, [cityId]);
 
-  return { districts, loading };
+  const isCurrent = state.cityId === cityId;
+
+  return {
+    districts: isCurrent ? state.districts : [],
+    loading: loading || (Boolean(cityId) && !isCurrent),
+  };
 };
+
+const hasRows = (data) => Array.isArray(data) && data.length > 0;
 
 /**
  * Seçilen ilçenin namaz vakitlerini çeken hook
- * - Cache destekli
+ * - Cache destekli; bağlantı yoksa süresi geçmiş kayıttan bugünü gösterir
  * - Retry mekanizmalı
  * - Gece yarısı geçişinde otomatik yeniden fetch
  */
@@ -149,27 +142,34 @@ const usePrayerTimes = (districtId) => {
   const [allTimes, setAllTimes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  // Vakitler kayıtlı listeden geliyor ve tazelenemedi (çevrimdışı)
+  const [stale, setStale] = useState(false);
   const lastFetchDateRef = useRef(null);
 
+  const applyRows = useCallback((rows) => {
+    const { current, next } = getVisiblePrayerTimes(rows);
+    setAllTimes(rows);
+    setTimes(current);
+    setNextTimes(next);
+    return current;
+  }, []);
+
   const fetchTimesData = useCallback(
-    async (signal) => {
+    async (signal, { silent = false } = {}) => {
       if (!districtId) return;
 
-      setLoading(true);
+      // Sessiz tazelemede ekrandaki vakitler iskelete dönmez
+      if (!silent) setLoading(true);
       setError(null);
 
       // Önce cache'e bak
       const cached = getCache('times', districtId);
-      if (cached && Array.isArray(cached) && cached.length > 0) {
-        const { current, next } = getVisiblePrayerTimes(cached);
-        if (current) {
-          setAllTimes(cached);
-          setTimes(current);
-          setNextTimes(next);
-          setLoading(false);
-          lastFetchDateRef.current = new Date().toDateString();
-          return;
-        }
+      if (hasRows(cached) && getVisiblePrayerTimes(cached).current) {
+        applyRows(cached);
+        setStale(false);
+        setLoading(false);
+        lastFetchDateRef.current = new Date().toDateString();
+        return;
       }
 
       try {
@@ -179,20 +179,17 @@ const usePrayerTimes = (districtId) => {
         );
         if (signal.aborted) return;
 
-        const { current, next } = getVisiblePrayerTimes(data);
-        setAllTimes(data);
-        setTimes(current);
-        setNextTimes(next);
+        applyRows(Array.isArray(data) ? data : []);
+        setStale(false);
         setCache('times', districtId, data);
         lastFetchDateRef.current = new Date().toDateString();
       } catch (err) {
         if (err.name === 'AbortError') return;
-        // Hata durumunda cache'den göstermeye çalış
-        if (cached && Array.isArray(cached) && cached.length > 0) {
-          const { current, next } = getVisiblePrayerTimes(cached);
-          setAllTimes(cached);
-          setTimes(current);
-          setNextTimes(next);
+        // Bağlantı yoksa: süresi geçmiş kayıt bugünü içeriyorsa onu göster
+        const fallback = getCache('times', districtId, { allowStale: true });
+        if (hasRows(fallback) && getVisiblePrayerTimes(fallback).current) {
+          applyRows(fallback);
+          setStale(true);
         } else {
           setError(err.message);
         }
@@ -202,7 +199,7 @@ const usePrayerTimes = (districtId) => {
         }
       }
     },
-    [districtId]
+    [districtId, applyRows]
   );
 
   useEffect(() => {
@@ -212,6 +209,7 @@ const usePrayerTimes = (districtId) => {
       setAllTimes([]);
       setLoading(false);
       setError(null);
+      setStale(false);
       return;
     }
 
@@ -242,8 +240,18 @@ const usePrayerTimes = (districtId) => {
       }
     };
 
+    // Arka plandaki sekmede zamanlayıcılar seyrekleşir; sekmeye dönünce
+    // (ör. telefon sahurda açıldığında) beklemeden bugüne geç
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') checkDate();
+    };
+
     const interval = setInterval(checkDate, 30000);
-    return () => clearInterval(interval);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [allTimes, fetchTimesData]);
 
   const retryControllerRef = useRef(null);
@@ -254,7 +262,21 @@ const usePrayerTimes = (districtId) => {
     fetchTimesData(retryControllerRef.current.signal);
   }, [fetchTimesData]);
 
-  return { times, nextTimes, loading, error, retry };
+  // Bağlantı geri gelince hata ya da kayıtlı veri ekranında kendiliğinden tazele
+  useEffect(() => {
+    if (!error && !stale) return undefined;
+
+    const handleOnline = () => {
+      retryControllerRef.current?.abort();
+      retryControllerRef.current = new AbortController();
+      fetchTimesData(retryControllerRef.current.signal, { silent: stale });
+    };
+
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [error, stale, fetchTimesData]);
+
+  return { times, nextTimes, allTimes, loading, error, stale, retry };
 };
 
 export default usePrayerTimes;

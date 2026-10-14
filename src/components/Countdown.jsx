@@ -24,34 +24,18 @@ const Num = ({ value, className = '' }) => (
 );
 
 const Countdown = ({ times, nextTimes, showAllTimes }) => {
-  const [countdown, setCountdown] = useState(null);
-  const [nextPrayer, setNextPrayer] = useState(null);
-  const [progress, setProgress] = useState(0);
+  // Değerler her saniye `now` üstünden hesaplanır; ilk çizimde de hazırdır
+  // (eskiden ilk karede "Yükleniyor" yazıp sonra sayaca zıplıyordu)
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     if (!times) return undefined;
 
     let timeout;
 
-    const updateCountdown = () => {
-      const now = new Date();
-      const next = showAllTimes
-        ? getNextPrayer(times, nextTimes, now)
-        : getNextMainPrayer(times, nextTimes, now);
-
-      setNextPrayer(next);
-
-      if (next) {
-        setCountdown(getTimeDifference(next.date, now));
-        setProgress(
-          getProgress(getPreviousPrayerDate(next, times, showAllTimes), next.date, now)
-        );
-      }
-    };
-
     // Saniye sınırına hizalı güncelleme: sayaç saatle aynı anda değişir
     const tick = () => {
-      updateCountdown();
+      setNow(new Date());
       timeout = setTimeout(tick, 1000 - (Date.now() % 1000) + 5);
     };
 
@@ -60,13 +44,26 @@ const Countdown = ({ times, nextTimes, showAllTimes }) => {
     return () => clearTimeout(timeout);
   }, [times, nextTimes, showAllTimes]);
 
-  if (!nextPrayer || !countdown) {
+  const nextPrayer = times
+    ? showAllTimes
+      ? getNextPrayer(times, nextTimes, now)
+      : getNextMainPrayer(times, nextTimes, now)
+    : null;
+
+  if (!nextPrayer) {
     return (
       <div className="countdown">
-        <div className="countdown-loading">Yükleniyor...</div>
+        <div className="countdown-loading">Yükleniyor</div>
       </div>
     );
   }
+
+  const countdown = getTimeDifference(nextPrayer.date, now);
+  const progress = getProgress(
+    getPreviousPrayerDate(nextPrayer, times, showAllTimes),
+    nextPrayer.date,
+    now
+  );
 
   const getTitle = () => {
     if (showAllTimes) {
@@ -112,6 +109,16 @@ const Countdown = ({ times, nextTimes, showAllTimes }) => {
     );
   };
 
+  // Ekran okuyucu için tek cümle: "İftar vaktine 2 saat 6 dakika"
+  const spokenTime = () => {
+    const { hours, minutes, seconds } = countdown;
+    const parts = [];
+    if (hours > 0) parts.push(`${hours} saat`);
+    if (minutes > 0) parts.push(`${minutes} dakika`);
+    if (hours === 0 && minutes === 0) parts.push(`${seconds} saniye`);
+    return parts.join(' ');
+  };
+
   const title = getTitle();
   const isFinalMinute = countdown.hours === 0 && countdown.minutes === 0;
 
@@ -119,16 +126,16 @@ const Countdown = ({ times, nextTimes, showAllTimes }) => {
     <div
       className={`countdown ${isFinalMinute ? 'is-final' : ''}`}
       role="timer"
-      aria-label={`${title} geri sayım`}
+      aria-label={`${title} ${spokenTime()}`}
     >
-      <div className="countdown-label" key={title}>{title}</div>
-      <div className="countdown-time" aria-live="off">
+      <div className="countdown-label" key={title} aria-hidden="true">{title}</div>
+      <div className="countdown-time" aria-hidden="true">
         {formatTime()}
       </div>
       <div
         className="countdown-progress"
         role="progressbar"
-        aria-label={`${title} kalan sürenin ilerlemesi`}
+        aria-label={`${title} geçen sürenin oranı`}
         aria-valuemin={0}
         aria-valuemax={100}
         aria-valuenow={Math.round(progress * 100)}

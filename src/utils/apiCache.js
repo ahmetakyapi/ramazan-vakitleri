@@ -7,7 +7,13 @@ const CACHE_DURATION = {
 
 const getCacheKey = (type, id) => `${CACHE_PREFIX}${type}-${id || 'all'}`;
 
-export const getCache = (type, id) => {
+/**
+ * Önbellekten okur. Süresi geçen kayıt silinmez: bağlantı yokken
+ * `allowStale` ile yine okunabilsin diye (vakit listesi 30 günü kapsıyor,
+ * birkaç günlük kayıt bugünü hâlâ içerir). Bir sonraki başarılı istek üzerine
+ * yazar.
+ */
+export const getCache = (type, id, { allowStale = false } = {}) => {
   try {
     const raw = localStorage.getItem(getCacheKey(type, id));
     if (!raw) return null;
@@ -15,8 +21,7 @@ export const getCache = (type, id) => {
     const { data, timestamp } = JSON.parse(raw);
     const maxAge = CACHE_DURATION[type];
 
-    if (Date.now() - timestamp > maxAge) {
-      localStorage.removeItem(getCacheKey(type, id));
+    if (!allowStale && Date.now() - timestamp > maxAge) {
       return null;
     }
 

@@ -1,140 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getNextMainPrayer, getNextPrayer } from '../utils/timeUtils';
-
-const DAY_IN_MS = 1000 * 60 * 60 * 24;
-const RAMADAN_MONTH = 9;
-const MAX_LOOKAHEAD_DAYS = 370;
-
-// Intl desteklemezse eski tablo fallback olarak kullanılır.
-const FALLBACK_RAMAZAN_DATES = {
-  2025: { start: new Date(2025, 2, 1),  end: new Date(2025, 2, 29) },
-  2026: { start: new Date(2026, 1, 19), end: new Date(2026, 2, 19) },
-  2027: { start: new Date(2027, 1, 8),  end: new Date(2027, 2, 8) },
-  2028: { start: new Date(2028, 0, 28), end: new Date(2028, 1, 25) },
-  2029: { start: new Date(2029, 0, 16), end: new Date(2029, 1, 13) },
-  2030: { start: new Date(2030, 0, 6),  end: new Date(2030, 1, 3) },
-};
-
-const hijriFormatter = (() => {
-  try {
-    return new Intl.DateTimeFormat('en-u-ca-islamic-umalqura', {
-      day: 'numeric',
-      month: 'numeric',
-      year: 'numeric',
-    });
-  } catch {
-    return null;
-  }
-})();
-
-const getStartOfDay = (date) => {
-  const value = new Date(date);
-  value.setHours(0, 0, 0, 0);
-  return value;
-};
-
-const getHijriDateParts = (date) => {
-  if (!hijriFormatter) return null;
-
-  try {
-    const parts = hijriFormatter.formatToParts(new Date(date));
-    return {
-      day: Number(parts.find((part) => part.type === 'day')?.value),
-      month: Number(parts.find((part) => part.type === 'month')?.value),
-      year: Number(parts.find((part) => part.type === 'year')?.value),
-    };
-  } catch {
-    return null;
-  }
-};
-
-const addDays = (date, amount) => {
-  const value = new Date(date);
-  value.setDate(value.getDate() + amount);
-  return value;
-};
-
-const getRamazanInfoFromIntl = () => {
-  const today = getStartOfDay(new Date());
-  const hijriToday = getHijriDateParts(today);
-
-  if (!hijriToday) return null;
-
-  if (hijriToday.month === RAMADAN_MONTH) {
-    let ramazanEnd = today;
-
-    for (let offset = 1; offset <= 35; offset += 1) {
-      const candidate = addDays(today, offset);
-      const hijriCandidate = getHijriDateParts(candidate);
-
-      if (!hijriCandidate || hijriCandidate.month !== RAMADAN_MONTH) {
-        ramazanEnd = addDays(candidate, -1);
-        break;
-      }
-
-      ramazanEnd = candidate;
-    }
-
-    return {
-      type: 'current',
-      day: hijriToday.day,
-      remaining: Math.max(0, Math.floor((ramazanEnd - today) / DAY_IN_MS)),
-      isKadirGecesi: hijriToday.day === 27,
-    };
-  }
-
-  for (let offset = 1; offset <= MAX_LOOKAHEAD_DAYS; offset += 1) {
-    const candidate = addDays(today, offset);
-    const hijriCandidate = getHijriDateParts(candidate);
-
-    if (
-      hijriCandidate?.month === RAMADAN_MONTH &&
-      hijriCandidate?.day === 1
-    ) {
-      return { type: 'countdown', days: offset };
-    }
-  }
-
-  return null;
-};
-
-const getRamazanInfoFromFallback = () => {
-  const today = getStartOfDay(new Date());
-  const year = today.getFullYear();
-
-  let ramazan = FALLBACK_RAMAZAN_DATES[year];
-
-  if (ramazan && today > getStartOfDay(ramazan.end)) {
-    ramazan = FALLBACK_RAMAZAN_DATES[year + 1];
-  }
-
-  if (!ramazan) return null;
-
-  const ramazanStart = getStartOfDay(ramazan.start);
-  const ramazanEnd = getStartOfDay(ramazan.end);
-
-  if (today < ramazanStart) {
-    return {
-      type: 'countdown',
-      days: Math.ceil((ramazanStart - today) / DAY_IN_MS),
-    };
-  }
-
-  if (today <= ramazanEnd) {
-    const currentDay = Math.floor((today - ramazanStart) / DAY_IN_MS) + 1;
-    return {
-      type: 'current',
-      day: currentDay,
-      remaining: Math.floor((ramazanEnd - today) / DAY_IN_MS),
-      isKadirGecesi: currentDay === 27,
-    };
-  }
-
-  return null;
-};
-
-const getRamazanInfo = () =>
-  getRamazanInfoFromIntl() || getRamazanInfoFromFallback();
+import { formatDayLabel } from '../utils/prayerData';
+import { getKadirGecesiState } from '../utils/ramazan';
 
 const prayerNamesSimple = {
   Imsak: 'İmsak',
@@ -153,54 +20,69 @@ const prayerNamesAll = {
 const allPrayers = ['Imsak', 'Gunes', 'Ogle', 'Ikindi', 'Aksam', 'Yatsi'];
 const mainPrayers = ['Imsak', 'Aksam'];
 
-const PrayerTimes = ({ times, nextTimes, showAllTimes }) => {
-  const [nextPrayer, setNextPrayer] = useState(null);
-  const [ramazanInfo, setRamazanInfo] = useState(null);
+const PrayerTimes = ({ times, nextTimes, showAllTimes, ramazanInfo }) => {
+  const [now, setNow] = useState(() => new Date());
 
+  // Dakika sınırına hizalı: vakitler tam dakikada girer, liste de sayaçla
+  // aynı anda sıradaki vakte geçer (eskiden 60 sn'ye kadar geride kalıyordu)
   useEffect(() => {
-    if (!times) return;
+    if (!times) return undefined;
 
-    const updateNext = () => {
-      const next = showAllTimes
-        ? getNextPrayer(times, nextTimes)
-        : getNextMainPrayer(times, nextTimes);
-
-      setNextPrayer(next);
+    let timeout;
+    const tick = () => {
+      setNow(new Date());
+      timeout = setTimeout(tick, 60000 - (Date.now() % 60000) + 20);
     };
 
-    updateNext();
-    const interval = setInterval(updateNext, 60000);
-
-    return () => clearInterval(interval);
+    tick();
+    return () => clearTimeout(timeout);
   }, [times, nextTimes, showAllTimes]);
-
-  useEffect(() => {
-    const updateRamazanInfo = () => {
-      setRamazanInfo(getRamazanInfo());
-    };
-
-    updateRamazanInfo();
-
-    const interval = setInterval(updateRamazanInfo, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   if (!times) {
     return (
       <div className="prayer-times">
-        <div className="prayer-loading">Vakitler yükleniyor...</div>
+        <div className="prayer-loading">Vakitler yükleniyor</div>
       </div>
     );
   }
 
+  const nextPrayer = showAllTimes
+    ? getNextPrayer(times, nextTimes, now)
+    : getNextMainPrayer(times, nextTimes, now);
+
+  // Günün son vakti geçince liste yarına döner. Eskiden sıradaki imsak yarının,
+  // iftar ise bugünün (geçmiş) saatini gösteriyordu; iki gün tek listede
+  // karışıyordu.
+  const showsTomorrow = Boolean(nextPrayer?.isTomorrow && nextTimes);
+  const listTimes = showsTomorrow ? nextTimes : times;
+
   const prayerOrder = showAllTimes ? allPrayers : mainPrayers;
   const prayerNames = showAllTimes ? prayerNamesAll : prayerNamesSimple;
+  const nextIndex = prayerOrder.indexOf(nextPrayer?.key);
+
   const getPrayerTime = (key) => {
-    if (nextPrayer?.isTomorrow && nextPrayer.key === key) {
+    if (nextPrayer?.isTomorrow && !showsTomorrow && nextPrayer.key === key) {
       return nextPrayer.time;
     }
 
-    return times[key];
+    return listTimes[key];
+  };
+
+  const renderKadirGecesi = () => {
+    const state = getKadirGecesiState(ramazanInfo, times, now);
+    if (!state) return null;
+
+    return (
+      <div className="kadir-gecesi" role="note">
+        <div className="kadir-gecesi-icon" aria-hidden="true">✨</div>
+        <div className="kadir-gecesi-content">
+          <span className="kadir-gecesi-title">
+            {state === 'tonight' ? 'Bu Gece Kadir Gecesi' : 'Kadir Gecesi'}
+          </span>
+          <span className="kadir-gecesi-subtitle">Bin aydan hayırlı gece</span>
+        </div>
+      </div>
+    );
   };
 
   const renderRamazanBadge = () => {
@@ -219,34 +101,26 @@ const PrayerTimes = ({ times, nextTimes, showAllTimes }) => {
     if (ramazanInfo.type === 'current') {
       return (
         <>
-          {ramazanInfo.isKadirGecesi && (
-            <div className="kadir-gecesi">
-              <div className="kadir-gecesi-icon">✨</div>
-              <div className="kadir-gecesi-content">
-                <span className="kadir-gecesi-title">Kadir Gecesi</span>
-                <span className="kadir-gecesi-subtitle">Bin aydan hayırlı gece</span>
-              </div>
-            </div>
-          )}
+          {renderKadirGecesi()}
           <div className="ramazan-badge ramazan-active">
             <div className="ramazan-active-row">
-              <span className="ramazan-day">{ramazanInfo.day}. Gün</span>
-              {ramazanInfo.remaining > 0 && (
-                <span className="ramazan-remaining">{ramazanInfo.remaining} gün kaldı</span>
-              )}
+              <span className="ramazan-day">Ramazan&apos;ın {ramazanInfo.day}. Günü</span>
+              <span className="ramazan-remaining">
+                {ramazanInfo.remaining > 0 ? `${ramazanInfo.remaining} gün kaldı` : 'Son gün'}
+              </span>
             </div>
             <span
               className="ramazan-progress"
               role="progressbar"
               aria-label="Ramazan ilerlemesi"
               aria-valuemin={1}
-              aria-valuemax={ramazanInfo.day + ramazanInfo.remaining}
+              aria-valuemax={ramazanInfo.length}
               aria-valuenow={ramazanInfo.day}
             >
               <span
                 className="ramazan-progress-fill"
                 style={{
-                  transform: `scaleX(${ramazanInfo.day / (ramazanInfo.day + ramazanInfo.remaining)})`,
+                  transform: `scaleX(${ramazanInfo.day / ramazanInfo.length})`,
                 }}
               />
             </span>
@@ -260,15 +134,23 @@ const PrayerTimes = ({ times, nextTimes, showAllTimes }) => {
 
   return (
     <div className="prayer-times">
-      <ul className="prayer-list" key={showAllTimes ? 'all' : 'main'} aria-label="Namaz vakitleri">
+      {showsTomorrow && (
+        <p className="list-day">
+          Yarın, {formatDayLabel(nextTimes)}
+        </p>
+      )}
+      <ul
+        className="prayer-list"
+        key={`${showAllTimes ? 'all' : 'main'}-${showsTomorrow ? 'tomorrow' : 'today'}`}
+        aria-label={showsTomorrow ? 'Yarının namaz vakitleri' : 'Bugünün namaz vakitleri'}
+      >
         {prayerOrder.map((key, index) => {
           const isActive = nextPrayer?.key === key;
-          const nextIndex = prayerOrder.indexOf(nextPrayer?.key);
-          // Tüm vakitler görünümünde bugün geçmiş vakitler sönükleşir
+          // Bugün geçmiş vakitler sönükleşir; liste yarındaysa hepsi önümüzde
           const isPast =
-            showAllTimes &&
-            nextPrayer &&
+            Boolean(nextPrayer) &&
             !isActive &&
+            !showsTomorrow &&
             (nextPrayer.isTomorrow || index < nextIndex);
 
           return (
